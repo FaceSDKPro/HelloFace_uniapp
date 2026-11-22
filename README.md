@@ -12,7 +12,7 @@
 
 1. 从插件市场导入完整插件和示例，确认 `uni_modules/HelloFace-Verify` 含目标平台 SDK；源码中缺失的 SDK 可按 [开发维护](#开发维护)说明补齐。
 2. 用 HBuilderX 导入根目录，配置自己的 AppID、包名和签名，按 [打包指南](docs/BUILDING.md)运行到真机。默认 Vue3；Vue2 将 `manifest.json` 的 `vueVersion` 改为 `"2"`。
-3. uni-app x 示例需把根目录的 `uni_modules/HelloFace-Verify`、`app-icons`、`demo`、`static` 及公开配置 `harmony-configs/entry`、`harmony-configs/AppScope` 复制到 `examples/uni-app-x` 对应目录，再单独导入并配置。可选用 `npm run demo:prepare` 自动同步，该辅助命令需要 Python；私有签名配置单独维护。
+3. 从源码运行 uni-app x 示例时，先执行 `npm run dev:prepare`，再用 HBuilderX 导入 `examples/uni-app-x` 并配置自己的 AppID、包名和签名。手动准备方式见 [打包指南](docs/BUILDING.md#通用准备)。
 
 Android / iOS 可选云端制作基座或完整本地构建，鸿蒙使用本地 DevEco 工具链。运行产物必须包含真实 SDK；Android 模型不压缩配置见 [插件接入说明](uni_modules/HelloFace-Verify/readme.md#接入)。修改 SDK、依赖、权限或资源后需重建。
 **集成到应用后一个CPU架构仅新增10MB左右体积(Android可以配置仅支持ARM64位CPU)**
@@ -45,26 +45,14 @@ Web、小程序不支持此插件。各平台实际编译与真机结果见 [验
 
 ## 开发维护
 
-以下为源码开发维护流程，使用完整插件接入业务或运行 Demo 无需执行这些脚本。
-
-GitHub 仓库不附带大型 SDK 二进制。开发者可使用 Python 3.9+、curl 和网络安装、校验 SDK：
+插件源码统一在 `uni_modules/HelloFace-Verify` 维护。首次克隆执行 `npm ci --ignore-scripts`，准备环境需要 Python 3.9+ 和 curl，UTS 检查需要 HBuilderX。
 
 ```sh
-python3 scripts/install_sdk.py
-python3 scripts/install_sdk.py --check
+npm run dev:prepare  # 补齐锁定 SDK、生成三端 UI 配置、同步 uni-app x 示例
+npm run dev:check    # 提交前执行，包含准备、自动测试和三端 UTS 转换
 ```
 
-仅安装单端可加 `--platform android`、`--platform ios` 或 `--platform harmony`；也可按 `sdk-artifacts.json` 手动放置对应 SDK 文件。
-
-插件只维护根目录 `uni_modules/HelloFace-Verify`。修改后执行 `npm run demo:prepare` 同步 uvue 副本；修改共用原生页面配置 `native-ui.json` 后，先执行 `npm run ui:build`。
-
-```sh
-npm ci --ignore-scripts
-npm run check               # 页面配置、测试、SDK 校验与三端 UTS 转换
-npm run android:alignment   # SDK AAR / 最终 APK 的 16KB 对齐检查
-```
-
-这些检查不代替完整 App 构建或真机验收。更多说明：[代码结构](docs/CODE_STRUCTURE.md)、[原生页面](docs/NATIVE_UI.md)、[应用图标](app-icons/README.md)、[Android 调试](docs/ANDROID_DEBUG.md)、[iOS 调试](docs/IOS_DEBUG.md)、[鸿蒙调试](docs/HARMONY_DEBUG.md)。
+只检查现有工作区时执行 `npm run check`。改动原生桥接、SDK、权限或资源后，按目标平台重新构建并在真机验收。[代码结构](docs/CODE_STRUCTURE.md) · [打包与单端检查](docs/BUILDING.md)
 
 ## 体验与联系
 

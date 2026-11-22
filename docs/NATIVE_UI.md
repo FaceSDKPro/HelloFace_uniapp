@@ -4,9 +4,9 @@ Android、iOS、HarmonyOS 共用同一套视觉布局：浅色背景、圆形相
 
 ## 三端共用配置
 
-页面文案、配色、字号、布局尺寸、动作提示和警告阶段统一维护在插件的 [native-ui.json](../uni_modules/HelloFace-Verify/native-ui.json)。执行 `npm run ui:build` 生成 Kotlin、Swift、ArkTS 的 `HelloFaceVerifyPresentation`，再执行 `npm run demo:prepare` 同步独立 uvue 示例。三个原生页面直接使用生成的配置，调用方无需增加 UI 参数。
+页面文案、配色、字号、布局尺寸、动作提示和警告阶段统一维护在插件的 [native-ui.json](../uni_modules/HelloFace-Verify/native-ui.json)。执行 `npm run dev:prepare` 即可生成 Kotlin、Swift、ArkTS 的 `HelloFaceVerifyPresentation` 并同步独立 uvue 示例。三个原生页面直接使用生成的配置，调用方无需增加 UI 参数。
 
-`npm run ui:check` 检查生成文件是否与配置一致，已加入 `npm run check`。修改页面时应先改配置并提交生成文件，避免单端文案或数值逐渐偏离；不需要接入方在打包时运行生成器。
+只需生成 UI 文件时可执行 `npm run ui:build`。提交时将配置和生成文件一起提交，`npm run check` 会验证两者一致。
 
 三端将等候人脸、正脸和稳定阶段统一提示为“请正对屏幕”。1:1 验证和独立活体在这些阶段间切换时合并相同的语音提示，距离、多人入镜和具体动作仍单独引导。未生成预览时保留重新采集入口、禁用确认按钮；保存期间返回、重新采集、确认按钮全部禁用并使用相同透明度。预览和确认照片均等比显示，前置照片仅显示镜像。
 
@@ -40,6 +40,6 @@ Android 使用 Kotlin 原生控件并设置 FIT_CENTER，iOS 使用 resizeAspect
 
 确认照片本身是 SDK 产生的对齐人脸区域，可能比实时预览紧凑；等比显示避免的是二次裁剪，不会把 SDK 人脸图还原为完整相机场景。
 
-Android 的界面位于 `HelloFaceVerifyCameraView.kt`，iOS 位于 `HelloFaceVerifyCameraView.swift`，鸿蒙位于 `HelloFaceVerifyCamera.ets`。外部集成仍直接调用原插件 API，Vue/uvue 示例不增加界面封装层。调整共用配置后执行 `ui:build`，然后通过 HBuilderX 的相应平台本地工具链重新编译运行；已具备 SDK/依赖时无需仅为混编源码改动重新云打包。iOS 需要兼容的 Xcode，鸿蒙需要 DevEco。仅同步 Vue 页面资源不会更新原生界面；SDK、原生资源或 Manifest 变更仍需重建基座/宿主。
+Android 的界面位于 `HelloFaceVerifyCameraView.kt`，iOS 位于 `HelloFaceVerifyCameraView.swift`，鸿蒙位于 `HelloFaceVerifyCamera.ets`。调整共用配置并准备示例后，使用 HBuilderX 的相应平台工具链重新编译运行。iOS 需要兼容的 Xcode，鸿蒙需要 DevEco。SDK、原生资源或 Manifest 变更后应重建基座或宿主。
 
 编译、设备及算法验收范围见 [验证记录](VALIDATION.md)。

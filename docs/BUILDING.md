@@ -26,25 +26,20 @@
 
 ## 通用准备
 
-以下命令用于 GitHub 源码的 SDK 安装和仓库检查，不是插件运行时依赖。已从插件市场导入完整 SDK 的使用者，可直接在 HBuilderX 配置并构建 Demo，无需安装 Python；也可按 `sdk-artifacts.json` 手动补齐 SDK。Python 仅是安装、校验、同步示例等辅助脚本的环境要求。Android / iOS 的云端自定义基座和完整本地构建均可，鸿蒙走本地构建，不强制在线制作基座。
-
-选择脚本准备时，在仓库根目录执行：
+从 GitHub 克隆源码后，在仓库根目录安装开发依赖并准备两个示例。
 
 ```sh
 npm ci --ignore-scripts
-npm run sdk:install
-npm run sdk:check
+npm run dev:prepare
 ```
 
-原生 SDK 由 `sdk-artifacts.json` 锁定到版本、上游 commit、SHA-256 和文件长度。也可仅安装单端：
+`dev:prepare` 会按 [SDK 锁定清单](../sdk-artifacts.json) 补齐和校验原生 SDK，生成三端 UI 配置，并同步 uni-app x 示例。源码修改后可直接运行 `npm run dev:check`，一次完成准备和仓库检查。
 
-```sh
-python3 scripts/install_sdk.py --platform android
-python3 scripts/install_sdk.py --platform ios
-python3 scripts/install_sdk.py --platform harmony
-```
+只调试一端时，可用 `npm run sdk:install -- --platform android` 单独补齐依赖，把 `android` 替换为 `ios` 或 `harmony` 即可。`npm run ui:build` 单独生成 UI 配置，`npm run demo:prepare` 单独同步示例。
 
-当前锁定 SDK 为 **0.8.15**，提交 `53da79b320f872d75209c35ba6351a792023b920`。安装新版本并校验成功后，脚本将同目录中旧版 `hiface-版本.aar/har` 移到忽略目录 `.sdk-cache/retired-sdk` 保留备份，避免编译时同时包含两个版本；用户的其他 AAR、License 和数据不做处理。`--check` 不改文件，发现旧版残留时会报错提示先安装。
+安装新 SDK 并校验成功后，脚本会把同目录下的旧版 `hiface-版本.aar/har` 备份到 `.sdk-cache/retired-sdk`，使编译只包含锁定版本。`sdk:check` 只读校验。
+
+已从市场下载完整插件的用户可直接用 HBuilderX 准备根目录示例。手动准备 uni-app x 示例时，将根目录的 `uni_modules/HelloFace-Verify`、`app-icons`、`demo`、`static` 和 `harmony-configs` 下的 `entry`、`AppScope` 复制到 `examples/uni-app-x` 的对应位置。签名资料在各自宿主中配置。
 
 SDK 更新后要重建原生基座/HAP，不能仅刷新页面。Android 0.8.15 的后端库为 `libhiface_opencv.so`，与 `libhiface_core.so` 一同打包；校验工具从锁定 AAR 读取完整库清单和字节哈希，不再固定检查旧版 ncnn 库名。新基座的两个 ABI、未压缩模型和 16KB 静态对齐均需通过检查。
 
@@ -54,9 +49,9 @@ SDK 更新后要重建原生基座/HAP，不能仅刷新页面。Android 0.8.15 
 | --- | --- | --- |
 | Vue3 | 仓库根目录 | 默认 `manifest.json` 的 `vueVersion: "3"` |
 | Vue2 | 仓库根目录 | 将 `vueVersion` 改为 `"2"`，使用已有 `main.js` 条件编译入口 |
-| uvue | 执行 `npm run demo:prepare` 后，导入 `examples/uni-app-x` | 使用其独立 `App.uvue`、`main.uts` 和 `manifest.json` |
+| uvue | `examples/uni-app-x` | 准备完成后导入，使用其独立 `App.uvue`、`main.uts` 和 `manifest.json` |
 
-根目录示例已配置本仓库演示用 AppID；独立 uvue 示例仍使用占位 AppID。集成到自己的应用时需配置自己的 AppID、包名和签名。插件唯一源码位于 `uni_modules/HelloFace-Verify`；修改后重新执行 `npm run demo:prepare`，把插件与已安装的原生依赖同步到 uvue 示例。
+根目录示例已配置本仓库演示用 AppID，独立 uvue 示例使用占位 AppID。集成到自己的应用时需配置自己的 AppID、包名和签名。插件源码统一在 `uni_modules/HelloFace-Verify` 维护。
 
 当前工程标识如下，DCloud AppID 与操作系统包名不是同一种标识：
 
@@ -166,20 +161,20 @@ HBuilderX 官方鸿蒙流程在本机调用 DevEco 工具链完成构建，不�
 
 根目录 `.npmignore` 按 [DCloud 发布忽略规则](https://uniapp.dcloud.net.cn/plugin/uni_modules#npmignore) 排除构建缓存、签名文件、生成的 uvue 副本及图标原始画稿/提示词；它接替 `.gitignore` 参与示例打包，因此维护时应同步保留私密文件的排除项。仓库仍保留这些素材，示例保留全部运行图标、源码、文档与 SDK 安装脚本。示例源码 ZIP 的大小不代表完整 App 或 SDK 插件包的大小。
 
-图标已无损压缩，尺寸、透明度、像素及色彩元数据保持不变。以后更新图标时执行 `npm run icons:build`、`npm run icons:optimize`、`npm run demo:prepare`；可选压缩工具的环境说明见 [图标说明](../app-icons/README.md)。正常导入和构建示例不需要安装该工具。示例包不携带本机安装的 SDK 二进制，下载后按“通用准备”执行 `sdk:install`；独立发布的插件包仍需包含真实 SDK 及其资源，不应为缩小示例而移除插件依赖。
+图标已无损压缩，尺寸、透明度、像素及色彩元数据保持不变。以后更新图标时执行 `npm run icons:build`、`npm run icons:optimize`、`npm run demo:prepare`；可选压缩工具的环境说明见 [图标说明](../app-icons/README.md)。正常导入和构建示例不需要安装该工具。示例包不携带本机安装的 SDK 二进制，下载后按[通用准备](#通用准备)操作。独立发布的插件包须包含真实 SDK 及其资源。
 
 APK / IPA / HAP 的发行压缩、混淆、原生库裁剪及实测边界见 [Demo 安装包体积](APP_SIZE.md)，不能用源码 ZIP 大小推算安装包。根 Vue 可用 `npm run android:release` 制作正式 APK；鸿蒙通过公开的 `harmony-configs` Release 配置优化，iOS 本地宿主配置见对应章节。
 
 ## 发布前验证
 
 ```sh
-npm run check
+npm run dev:check
 ```
 
-这条命令执行三端页面配置同步检查、API、示例、SDK 安装器和 Android 调试/对齐自动化测试、完整三端 SDK 文件校验和 UTS 转换。如果只安装了单端 SDK，可以单独执行 `python3 scripts/install_sdk.py --check --platform android` 等对应检查；完整 `npm run check` 需要三端 SDK 文件。
+这条命令先准备示例，再检查三端 UI 与 SDK、运行自动测试并转换 UTS。三端 SDK 已就绪时，可以执行只检查的 `npm run check`。只验证单端 SDK 时，可执行 `npm run sdk:check -- --platform android` 等对应命令。
 
 随后按所选平台实际构建安装包、安装到真机，验证录入、本人/他人识别、活体拒绝、权限拒绝、取消、后台释放和特征保存。已有结果及待验项见 [验证记录](VALIDATION.md)。
 
 ## 新增接口后的联编
 
-`detectLiveness`、`extractFaceFeature`、`getFaceStatue` 包含新增 UTS/原生分支。当前锁定 SDK 0.8.15，核对所用 License 的有效期；需要用 HBuilderX 原生联编或重建 Android 基座/完整鸿蒙 HAP，iOS 使用兼容 Swift 6.1.2 的 Xcode 完成原生构建。只替换 Vue 页面资源无法给旧基座增加接口。更新原生源码后执行 `android:prepare`、`demo:prepare`，再按本指南检查、构建；保留用户身份、数据和签名。
+新增 UTS/原生接口后先运行 `npm run dev:prepare`，再用 HBuilderX 联编或重建目标平台的原生安装包。手工制作 Android 基座前执行 `npm run android:prepare`，生成与源码对应的指纹。iOS 使用兼容 Swift 6.1.2 的 Xcode，鸿蒙重新构建 HAP。用已有数据和签名验收时，先确认对应 SDK License 的有效期。

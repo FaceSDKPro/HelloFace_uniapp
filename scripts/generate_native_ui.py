@@ -109,9 +109,10 @@ def main():
     for platform, extension in [('android', 'kt'), ('ios', 'swift'), ('harmony', 'ets')]:
         target = PLUGIN / f'utssdk/app-{platform}/HelloFaceVerifyPresentation.{extension}'
         expected = render(spec, extension)
+        if target.is_file() and target.read_text() == expected:
+            continue
         if args.check:
-            if not target.is_file() or target.read_text() != expected:
-                stale.append(str(target.relative_to(ROOT)))
+            stale.append(str(target.relative_to(ROOT)))
         else:
             target.write_text(expected)
     if stale:

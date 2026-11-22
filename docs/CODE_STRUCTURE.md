@@ -28,7 +28,7 @@
 | `app-*/HelloFaceVerifyCamera*` | 权限后的相机采集、SDK 调用、确认及释放 | 保存确认前不写基准，结束后不再接受旧帧 |
 | `app-*/FaceImageImporter.*` | 外部图片解码、方向处理、真实 SDK 特征提取 | 导入不等于活体或身份验证；失败保留原基准 |
 | `app-*/ReferenceStore.*` | 指定模型空间和 faceID 的本机基准 | 不改存储键、加密格式或覆盖语义 |
-| `native-ui.json` / `HelloFaceVerifyPresentation.*` | 三端共用界面参数及其生成产物 | 修改 JSON 后执行 `npm run ui:build` |
+| `native-ui.json` / `HelloFaceVerifyPresentation.*` | 三端共用界面参数及其生成产物 | 修改 JSON 后用 `npm run dev:prepare` 生成并同步 |
 
 这些路径均相对 `uni_modules/HelloFace-Verify`。插件副本 `examples/uni-app-x/uni_modules/HelloFace-Verify` 由 `npm run demo:prepare` 同步，不在副本中单独修复。同步后按 SDK 锁定清单将旧版 AAR/HAR 备份移出副本，避免增量复制残留两个 SDK。
 
@@ -70,7 +70,7 @@ Android 云基座与本地联编模块的名称不同，跨文件桥接访问器
 
 注释优先解释异步边界、保存时机、平台约束和数据格式。参数与默认值统一在 `interface.uts` 描述，完整列表见 [API](API.md)；避免让 Demo 承担 SDK 内部机制的解释。
 
-修改共享 UTS 或三端入口后执行 `npm run check`；它覆盖真实源码的参数/回调测试、SDK 完整性和三端 UTS 转换。另执行 `npm run android:uts-check` 及其 `-- --uni-app-x` 模式，检查实际 Kotlin/DEX 与桥接 ABI。Demo 修改还应使用 HBuilderX 编译对应 Vue/uvue 页面，不能仅靠 JS 替身测试推导原生编译通过。
+修改共享 UTS 或三端入口后执行 `npm run dev:check`，完成准备、参数与回调测试、SDK 校验和三端 UTS 转换。要检查 Android 的实际 Kotlin/DEX 与桥接 ABI，可执行 `npm run android:uts-check` 或加上 `-- --uni-app-x` 检查对应示例。Demo 页面修改后用 HBuilderX 编译对应 Vue/uvue 页面。
 
 原生修改需相应平台编译和必要真机回归。HAR 构建、UTS 转换、完整 HAP 构建与真机验收分别记录，不能互相代替。鸿蒙操作步骤见 [鸿蒙调试](HARMONY_DEBUG.md)，实际结果和限制见 [验证记录](VALIDATION.md)。
 
