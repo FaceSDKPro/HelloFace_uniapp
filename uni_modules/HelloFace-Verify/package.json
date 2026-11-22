@@ -11,7 +11,7 @@
     "离线人脸识别",
     "鸿蒙人脸识别"
 ],
-  "repository": "https://github.com/FaceAISDK/HelloFace_uniapp",
+  "repository": "https://github.com/FaceSDKPro/HelloFace_uniapp",
   "engines": {
     "HBuilderX": "^5.34",
     "uni-app": "^5.34",

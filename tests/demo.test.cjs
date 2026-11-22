@@ -10,7 +10,7 @@ try { ts = require('typescript') } catch (_) {
 }
 
 // Exercise the actual page scripts; native calls and system dialogs stay mocked.
-function loadPage(filename, app = true, windowWidth = 480) {
+function loadPage(filename, app = true, resultWidth = 418) {
   const source = fs.readFileSync(path.resolve(__dirname, '..', filename), 'utf8')
   const script = source.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1]
   let enabled = true
@@ -30,11 +30,26 @@ function loadPage(filename, app = true, windowWidth = 480) {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS }
   })
   assert.equal(diagnostics.length, 0)
-  const calls = [], modals = [], toasts = [], loading = [], uiEvents = [], exports = {}
+  const calls = [], modals = [], toasts = [], loading = [], uiEvents = [], routes = [], exports = {}
+  const settings = []
+  let cameraAuthorized = 'denied'
+  const measure = callback => callback({ width: resultWidth })
+  const query = {
+    in: () => query,
+    select(selector) { assert.equal(selector, '#demo-result-body'); return query },
+    boundingClientRect: callback => ({ exec: () => measure(callback) })
+  }
   const sandbox = {
     exports, demoImageBase64: 'demo-photo', demoFeature: 'demo-feature', demoFeatureSpaceID: 'jdx-feature-v1',
     uni: {
-      getWindowInfo: () => ({ windowWidth }), hideKeyboard() {}, showModal: options => modals.push(options),
+      createSelectorQuery: () => query,
+      getElementById(id) {
+        assert.equal(id, 'demo-result-body')
+        return { getBoundingClientRectAsync: options => measure(options.success) }
+      },
+      getAppAuthorizeSetting: () => ({ cameraAuthorized }), openAppAuthorizeSetting: options => settings.push(options),
+      hideKeyboard() {}, showModal: options => modals.push(options),
+      navigateTo: options => routes.push(options.url),
       showToast: options => { toasts.push(options); uiEvents.push('toast') },
       showLoading: options => { loading.push(options); uiEvents.push('loading') }, hideLoading: () => uiEvents.push('hideLoading')
     }
@@ -50,10 +65,22 @@ function loadPage(filename, app = true, windowWidth = 480) {
     Object.defineProperty(state, name, { get: getter.bind(state) })
   }
   for (const [name, method] of Object.entries(page.methods)) state[name] = method.bind(state)
-  return { state, calls, modals, toasts, loading, uiEvents, unload: () => page.onUnload.call(state) }
+  return { state, calls, modals, toasts, loading, uiEvents, routes, settings,
+    show: () => page.onShow.call(state),
+    resize: (width) => { resultWidth = width; page.onResize.call(state) },
+    authorizeCamera: () => { cameraAuthorized = 'authorized' },
+    unload: () => page.onUnload.call(state) }
 }
 
 for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/index.uvue']) {
+  test(`${file}: the website shortcut opens the local browser page without sharing the input`, () => {
+    const { state, routes } = loadPage(file)
+    state.faceID = 'private-reference'
+    state.openWebsite()
+    assert.deepEqual(routes, ['/pages/website/index'])
+    assert.equal(state.faceID, 'private-reference')
+  })
+
   test(`${file}: camera results display the latest frame at its original aspect ratio`, () => {
     const { state, calls, unload } = loadPage(file)
     const frame = { code: 0, msg: '检测通过', faceID: '', passed: true, frameJpegBase64: '/9j/2Q==' }
@@ -80,7 +107,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
   })
 
   test(`${file}: narrow layouts and image decode failures keep the outcome readable`, () => {
-    const { state, calls, unload } = loadPage(file, true, 320)
+    const { state, calls, unload, resize } = loadPage(file, true, 258)
     const scrolls = []
     state.$nextTick = callback => scrolls.push(callback)
     state.detect()
@@ -88,18 +115,26 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
       frameJpegBase64: '/9j/2Q==', frameWidth: 720, frameHeight: 405 })
     calls[0].options.complete({})
     const frame = state.resultFrames[0]
+    assert.deepEqual([frame.width, frame.height], [96, 54])
+    scrolls.shift()()
     assert.deepEqual([frame.width, frame.height], [108, 61])
+    resize(400)
+    assert.deepEqual([frame.width, frame.height], [160, 90])
     state.onResultFrameError(frame.generation)
     assert.equal(state.resultFrames.length, 0)
     assert.equal(state.resultStatus, '活体通过')
     assert.equal(state.resultText, '活体分数：0.9900')
     state.verify()
-    scrolls.shift()()
     assert.equal(state.resultScrollTarget, '')
     calls[1].options.fail({ code: 103, msg: '已取消', faceID: 'demo-user' })
     calls[1].options.complete({})
     assert.equal(state.resultStatusTone, 'result-cancelled')
     assert.equal(state.resultFrames.length, 0)
+    state.enroll()
+    scrolls.shift()()
+    assert.equal(state.resultScrollTarget, '')
+    calls[2].options.fail({ code: 103, msg: '已取消', faceID: 'demo-user' })
+    calls[2].options.complete({})
     unload()
     scrolls.shift()()
     assert.equal(state.resultScrollTarget, '')
@@ -110,9 +145,9 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     state.verify()
     calls[0].options.fail({ code: 105, msg: '请先录入', faceID: 'demo-user' })
     assert.equal(toasts.length, 1)
-    assert.equal(toasts[0].title, '请先录入，code: 105')
+    assert.equal(toasts[0].title, '请先录入')
     assert.equal(toasts[0].icon, 'none')
-    assert.equal(state.resultText, '返回码：105')
+    assert.equal(state.resultCode, 105)
     assert.equal(state.busy, true)
     calls[0].options.complete({})
     assert.equal(state.busy, false)
@@ -120,11 +155,11 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     assert.equal(calls.length, 2)
     calls[1].options.fail({ code: 103, msg: '已取消', faceID: 'demo-user' })
     assert.equal(toasts.length, 2)
-    assert.equal(toasts[1].title, '已取消，code: 103')
+    assert.equal(toasts[1].title, '已取消')
   })
   test(`${file}: demo sync keeps the current faceID without enrollment or reading device features`, () => {
     const { state, calls, loading, uiEvents } = loadPage(file)
-    state.syncImage()
+    state.syncDemo('图片')
     assert.equal(calls[0].name, 'syncFaceImage')
     assert.equal(loading[0].title, '正在同步图片')
     assert.equal(loading[0].mask, true)
@@ -132,26 +167,66 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     assert.equal(calls[0].options.imageBase64, 'demo-photo')
     assert.equal(calls[0].options.faceID, 'demo-user')
     assert.equal(state.faceID, 'demo-user')
-    assert.equal(calls[0].options.overwrite, true)
+    assert.equal(calls[0].options.overwrite, false)
     calls[0].options.success({ code: 0, msg: '同步成功', faceID: 'demo-user', passed: null })
     calls[0].options.complete({})
     assert.ok(!state.resultText.includes('passed:'))
+    assert.equal(state.resultScrollTarget, 'demo-result')
     assert.deepEqual(uiEvents.slice(-2), ['hideLoading', 'toast'])
     assert.equal(state.busy, false)
     state.faceID = 'chosen-user'
-    state.syncFeature()
+    state.syncDemo('特征')
     assert.equal(calls[1].name, 'syncFaceFeature')
     assert.equal(calls[1].options.feature, 'demo-feature')
     assert.equal(calls[1].options.featureSpaceID, 'jdx-feature-v1')
     assert.equal(calls[1].options.faceID, 'chosen-user')
     assert.equal(state.faceID, 'chosen-user')
-    assert.equal(calls[1].options.overwrite, true)
+    assert.equal(calls[1].options.overwrite, false)
     assert.equal(loading[1].title, '正在同步特征')
     calls[1].options.fail({ code: 302, msg: '存储异常', faceID: 'chosen-user' })
     calls[1].options.complete({})
+    assert.equal(state.resultCode, 302)
+    assert.equal(state.resultScrollTarget, 'demo-result')
     assert.deepEqual(uiEvents.slice(-2), ['hideLoading', 'toast'])
     assert.equal(state.busy, false)
     assert.equal(calls.length, 2)
+  })
+
+  test(`${file}: demo sync retries a conflict only after confirmation for the original FaceID`, () => {
+    for (const kind of ['图片', '特征']) {
+      const { state, calls, modals, unload } = loadPage(file)
+      const collision = { code: 106, msg: '已录入', faceID: 'original' }
+      const collide = (call) => {
+        call.options.fail(collision)
+        call.options.complete(collision)
+      }
+      state.faceID = ' original '
+      state.syncDemo(kind)
+      assert.equal(calls[0].options.overwrite, false)
+      collide(calls[0])
+      assert.equal(state.busy, true)
+      assert.match(modals[0].content, /「original」/)
+      modals[0].success({ confirm: false })
+      assert.equal(calls.length, 1)
+      assert.equal(state.busy, false)
+
+      state.syncDemo(kind)
+      collide(calls[1])
+      state.faceID = 'new'
+      modals[1].success({ confirm: true })
+      assert.equal(calls[2].options.faceID, 'original')
+      assert.equal(calls[2].options.overwrite, true)
+      collide(calls[2])
+      assert.equal(modals.length, 2)
+      assert.equal(state.resultCode, 106)
+      assert.equal(state.busy, false)
+
+      state.syncDemo(kind)
+      collide(calls[3])
+      unload()
+      modals[2].success({ confirm: true })
+      assert.equal(calls.filter(call => call.name !== 'cancel').length, 4)
+    }
   })
   test(`${file}: verification displays the SDK verdict and retains the submitted liveness mode`, () => {
     const { state, calls } = loadPage(file)
@@ -201,7 +276,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
       assert.equal(state.silentLiveness, silent)
       assert.equal(state.actionLiveness, actions)
       calls[0].options.complete({})
-      state.syncImage()
+      state.syncDemo('图片')
       assert.equal(state.resultMode, '')
     }
   })
@@ -248,7 +323,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     calls[0].options.complete({})
     assert.equal(state.busy, false)
     assert.equal(state.resultStatus, '相机未授权')
-    assert.equal(state.resultText, '返回码：102')
+    assert.equal(state.resultCode, 102)
     state.detect()
     unload()
     assert.deepEqual(calls.map(call => call.name), ['detectLiveness', 'detectLiveness', 'cancel'])
@@ -333,9 +408,10 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     calls[0].options.success({ code: 0, msg: '录入成功', errMsg: 'enrollFace:ok', faceID: 'demo-user', passed: true,
       outcome: 'PASSED', feature: 'private-test-feature' })
     calls[0].options.complete({})
-    assert.match(state.resultText, /code: 0/)
-    assert.match(state.resultText, /msg: 录入成功/)
-    assert.match(state.resultText, /passed: true/)
+    assert.equal(state.resultCode, 0)
+    assert.equal(state.resultStatus, '录入成功')
+    assert.equal(state.resultText, 'FaceID：demo-user')
+    assert.equal(state.resultScrollTarget, 'demo-result')
     assert.ok(!JSON.stringify(state).includes('private-test-feature'))
   })
 
@@ -354,7 +430,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     assert.equal(calls[0].options.faceID, 'demo-user')
     calls[0].options.success({ code: 0, msg: '删除成功', errMsg: 'deleteFace:ok', faceID: 'demo-user', passed: null })
     calls[0].options.complete({})
-    assert.match(state.resultText, /msg: 删除成功/)
+    assert.equal(state.resultStatus, '删除成功')
     assert.ok(!state.resultText.includes('passed:'))
     assert.equal(state.busy, false)
     state.remove()
@@ -370,7 +446,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
       faceID: 'demo-user', errMsg: 'verifyFace:fail 相机未授权', detail: 'Original camera diagnostics' })
     calls[0].options.complete({})
     assert.equal(state.resultStatus, '相机未授权')
-    assert.equal(state.resultText, '返回码：102')
+    assert.equal(state.resultCode, 102)
     assert.equal(state.busy, false)
     state.verify()
     unload()
@@ -388,8 +464,27 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     state.remove()
     modals[0].fail({ errMsg: 'showModal:fail' })
     assert.equal(state.busy, false)
-    assert.equal(state.resultText, '操作未完成')
+    assert.equal(state.resultStatus, '操作未完成')
     assert.equal(calls.length, 0)
+  })
+
+  test(`${file}: the camera settings shortcut rechecks permission when returning`, () => {
+    const { state, calls, settings, show, authorizeCamera } = loadPage(file)
+    state.openCameraSettings()
+    assert.equal(settings.length, 0)
+    state.enroll()
+    calls[0].options.fail({ code: 102, msg: '相机未授权', faceID: 'demo-user' })
+    calls[0].options.complete({})
+    assert.equal(settings.length, 0)
+    state.openCameraSettings()
+    assert.equal(settings.length, 1)
+    show()
+    assert.equal(state.resultCode, 102)
+    authorizeCamera()
+    show()
+    assert.equal(state.resultStatus, '相机权限已开启，请重试')
+    assert.equal(state.resultStatusTone, 'result-passed')
+    assert.equal(calls.length, 1)
   })
 
   test(`${file}: browser preview never simulates recognition success`, () => {

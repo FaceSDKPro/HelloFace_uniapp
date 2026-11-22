@@ -64,7 +64,7 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
     private val title = label(UI.preparingTitle, UI.fontTitle, INK, true).apply {
         accessibilityLiveRegion = ACCESSIBILITY_LIVE_REGION_POLITE
     }
-    private val phase = label(UI.phase(enrollment), UI.fontPhase, BLUE).apply {
+    private val phase = label("", UI.fontPhase, BLUE).apply {
         background = rounded(UI.colorPhaseFill, UI.pillRadius.toFloat())
     }
     private val tips = LinearLayout(context).apply {
@@ -76,7 +76,6 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
             addView(label(text, UI.fontTip, INK), LinearLayout.LayoutParams(0, -1, 1f))
         }
     }
-    private val confirmation = label(UI.confirmation, UI.fontConfirmation, MUTED)
     private val retake = button(UI.retake, Color.WHITE, INK).apply {
         background = rounded(Color.WHITE, UI.buttonRadius.toFloat(), UI.colorButtonBorder); setOnClickListener { onRetake() }
     }
@@ -105,7 +104,7 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
             if (actionDeadline < 0) return
             val remaining = (actionDeadline - SystemClock.elapsedRealtime()).coerceAtLeast(0)
             mask.countdown = remaining.toFloat() / actionDuration
-            phase.text = "$actionPhase · ${ceil(remaining / 1000.0).toInt()}${UI.countdownSuffix}"
+            showPhase("$actionPhase · ${ceil(remaining / 1000.0).toInt()}${UI.countdownSuffix}")
             if (remaining > 0) postOnAnimation(this)
             // 倒计时结束只停止绘制，结果、超时和资源释放仍由 SDK 决定。
         }
@@ -128,7 +127,7 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
         val active = !enrollment && count > 0 && (stage == "PERFORM_ACTION" || action != null) &&
             stage !in listOf("FACE_FORWARD", "FACE_NOT_FRONTAL", "HOLD_STILL", "FACE_UNSTABLE")
         if (!active) { resetActionCountdown(); return }
-        actionPhase = phaseText
+        if (phaseText.isNotEmpty()) actionPhase = phaseText
         // 与原生 Demo 一致：整个动作序列共享总时限，换动作及短暂丢脸不重置。
         if (actionDeadline < 0 && stage == "PERFORM_ACTION") {
             actionDuration = actionTimeoutMs * count
@@ -148,7 +147,7 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
         saving = false
         captured = false; photo.setImageDrawable(null)
         title.text = UI.liveTitle
-        phase.text = if (liveness) UI.livenessPhase else UI.phase(enrollment)
+        showPhase("")
         tips.visibility = VISIBLE
         back.isEnabled = true; retake.isEnabled = true; confirm.isEnabled = true
         back.alpha = 1f; retake.alpha = 1f; confirm.alpha = 1f
@@ -159,11 +158,16 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
         if (captured) return
         val instruction = UI.guidance(stage, action)
         if (title.text != instruction) title.text = instruction
-        val phaseText = if (liveness && stage != "PERFORM_ACTION") UI.livenessPhase else UI.phase(enrollment, stage, step, count)
-        if (phase.text != phaseText) phase.text = phaseText
+        val phaseText = UI.phase(stage, step, count)
+        showPhase(phaseText)
         mask.updateProgress(enrollment && stage == "HOLD_STILL")
         updateActionCountdown(stage, action, count, phaseText)
         mask.tint = if (UI.isWarning(stage)) AMBER else if (enrollment) UI.colorOuterRing else BLUE
+    }
+
+    private fun showPhase(text: String) {
+        if (phase.text != text) phase.text = text
+        phase.visibility = if (text.isEmpty()) INVISIBLE else VISIBLE
     }
 
     fun showConfirmation(bitmap: Bitmap?, mirrored: Boolean) {
@@ -175,7 +179,7 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
         mask.tint = GREEN
         dialogTitle.text = if (bitmap == null) UI.missingTitle else UI.confirmTitle
         dialogDetail.text = if (bitmap == null) UI.missingDetail else UI.confirmDetail
-        title.text = dialogTitle.text; phase.text = UI.confirmPhase
+        title.text = dialogTitle.text; showPhase(UI.confirmPhase)
         tips.visibility = GONE
         confirm.text = UI.confirm; retake.isEnabled = true; retake.alpha = 1f
         confirm.isEnabled = bitmap != null
@@ -194,13 +198,11 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
             ?: (resources.displayMetrics.widthPixels - dp(UI.dialogInset * 2))).coerceAtLeast(1)
         val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
         val photoSide = min(dp(UI.dialogPhotoSide), (dialogWidth - dp(UI.dialogPadding * 2)).coerceAtLeast(1))
-        body.addView(photo, LinearLayout.LayoutParams(photoSide, photoSide))
+        if (bitmap != null) body.addView(photo, LinearLayout.LayoutParams(photoSide, photoSide))
         body.addView(dialogDetail, LinearLayout.LayoutParams(-1, dp(UI.detailHeight)).apply {
             if (bitmap != null) topMargin = dp(UI.dialogGap)
         })
-        body.addView(confirmation, LinearLayout.LayoutParams(-1, dp(UI.confirmationHeight)).apply { topMargin = dp(UI.dialogTextGap) })
-        val bodyHeight = (if (bitmap == null) 0 else photoSide + dp(UI.dialogGap)) +
-            dp(UI.detailHeight + UI.dialogTextGap + UI.confirmationHeight)
+        val bodyHeight = dp(UI.detailHeight) + (if (bitmap == null) 0 else photoSide + dp(UI.dialogGap))
         val available = (height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels) - safeTop - safeBottom -
             dp(UI.dialogInset * 2 + UI.dialogPadding * 2 + UI.dialogHeadingHeight + UI.dialogGap * 2 + UI.buttonHeight)
         // 只滚动图片和说明，窄屏上关闭、重拍、确认始终可见。
@@ -242,7 +244,7 @@ internal class HelloFaceVerifyCameraView(context: Context, private val enrollmen
     private fun dismissConfirmation() {
         confirmationDialog?.setOnCancelListener(null)
         confirmationDialog?.dismiss(); confirmationDialog = null
-        listOf(photo, confirmation, retake, confirm, dialogTitle, dialogDetail, closeConfirmation).forEach {
+        listOf(photo, retake, confirm, dialogTitle, dialogDetail, closeConfirmation).forEach {
             (it.parent as? ViewGroup)?.removeView(it)
         }
         closeConfirmation.isEnabled = true; closeConfirmation.alpha = 1f

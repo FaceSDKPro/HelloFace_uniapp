@@ -16,7 +16,7 @@
 ## 最小调用
 
 ```js
-import { enrollFace, verifyFace } from '@/uni_modules/HelloFace-Verify'
+import { enrollFace, verifyFace, detectLiveness } from '@/uni_modules/HelloFace-Verify'
 
 // 用户点击“录入”时调用；默认不覆盖已存在的用户。
 enrollFace({
@@ -35,9 +35,20 @@ verifyFace({
   fail: (err) => { /* 取消、权限拒绝、未录入、SDK 错误等 */ },
   complete: (_) => { /* 关闭 loading、恢复按钮 */ }
 })
+
+// 用户点击“独立活体”时调用。默认静默活体，直接传 actions 可追加动作。
+detectLiveness({
+  success: (res) => {
+    if (res.passed === true) { /* 活体通过 */ }
+    else { /* 可直接展示 res.msg */ }
+  },
+  fail: (err) => { /* 可直接展示 err.msg */ }
+})
 ```
 
 接口返回 `void`，请使用回调，不能直接 `await verifyFace(...)`。H5/小程序不支持此原生能力；有浏览器预览需求时，将导入和调用放在 `APP` 条件编译内，示例页面已包含这一处理。
+
+`verifyFace` 和 `detectLiveness` 的原生相机页自带系统语音引导，与屏幕提示共用文案。同一步的重复提示会合并，动作切换后播报新提示。缺少系统语音时仍可按屏幕提示操作。
 
 ## 参数
 
@@ -183,7 +194,7 @@ syncFaceFeature({
 
 `syncFaceFeature` 与 `setFaceFeature` 使用同一存储语义，保留旧接口兼容。服务器下发特征可来自其他设备，但必须来自兼容模型/预处理的 SDK，并同时传递返回的 `featureSpaceID`。仅用于本次验证且不保存时，仍可用 `verifyFace({ faceID, referenceFeature, featureSpaceID })`。
 
-两套 Demo 的同步按钮读取同一份 [AI 示例基准](../demo/README.md)：200×200 PNG 经 TinyPNG 压缩，HF1 由压缩后图片通过真实 SDK 提取。按钮与录入、验证、删除共用输入框中的 `faceID`，默认 `demo-user`，并显式覆盖当前标识的基准。同步演示人脸后，如需验证本人，应重新相机录入本人。AI 人脸用于演示数据同步，不能拿本人通过该人脸的活体验证。业务接入时换成自己的照片/服务器特征，通常保留 `overwrite: false`。
+两套 Demo 的同步按钮读取同一份 [AI 示例基准](../demo/README.md)。200×200 PNG 经 TinyPNG 压缩，HF1 由压缩后的图片通过真实 SDK 提取。同步、录入、验证和删除共用输入框中的 `faceID`，默认为 `demo-user`。同步默认使用 `overwrite: false`。遇到返回码 `106` 时，弹窗会显示本次操作的 FaceID，确认替换后才覆盖该基准。使用演示基准后，如需验证本人，请用相机重新录入本人。业务接入时请使用自己的照片或服务端特征，通常保留 `overwrite: false`。
 
 ### faceID 与特征规则
 

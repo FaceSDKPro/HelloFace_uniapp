@@ -18,7 +18,7 @@
 
 **自带录入确认和动作引导界面。** 三端动作验证均显示剩余秒数及圆环倒计时。 动作支持眨眼、张嘴、摇头、点头，可按顺序组合，最多 4 步，允许重复。人脸比对与活体检测在设备端完成，不调用云端人脸识别 API。
 
-[下载示例工程](https://github.com/FaceAISDK/HelloFace_uniapp)，体验录入、四种验证组合、独立活体、图片/特征同步和删除；示例默认使用同一个 `demo-user`。
+[下载示例工程](https://github.com/FaceSDKPro/HelloFace_uniapp)，体验录入、四种验证组合、独立活体、图片/特征同步和删除；示例默认使用同一个 `demo-user`。
 
 ## 接入
 
@@ -39,7 +39,7 @@ Android 在 `manifest.json` 合并以下配置：uni-app 放在 `app-plus → di
 }
 ```
 
-首次运行必须把插件及真实 SDK 纳入原生运行产物。Android / iOS 可选择云端制作自定义基座，也可配置本地原生工程构建；鸿蒙使用本机 DevEco 工具链。**不强制在线制作自定义基座**，完整步骤见 [打包指南](https://github.com/FaceAISDK/HelloFace_uniapp/blob/main/docs/BUILDING.md)。
+首次运行必须把插件及真实 SDK 纳入原生运行产物。Android / iOS 可选择云端制作自定义基座，也可配置本地原生工程构建；鸿蒙使用本机 DevEco 工具链。**不强制在线制作自定义基座**，完整步骤见 [打包指南](https://github.com/FaceSDKPro/HelloFace_uniapp/blob/main/docs/BUILDING.md)。
 
 ### 3. 调用录入和验证
 
@@ -76,6 +76,8 @@ function verify() {
 同一账号使用同一个 `faceID`。录入经用户确认后保存；默认不覆盖，更新时传 `overwrite: true`。验证默认前置相机、阈值 `0.80`、静默活体开启。
 
 接口通过回调返回结果，不能直接 `await`。**是否通过以 `passed === true` 为准**，识别未通过仍会进入 `success`。页面应防重复点击、在 `complete` 收尾，离页时取消相机任务；删除基准前由业务确认。
+
+1:1 验证与独立活体的原生相机页会用系统中文语音播报位置和动作提示。相机结束、取消或退到后台时停止播报；设备语音服务或离线音色不可用时，屏幕提示仍可操作。
 
 `verifyFace` 和 `detectLiveness` 的 `success` 返回可用的 SDK 结束帧 `frameJpegBase64`、`frameWidth`、`frameHeight`。未提供帧时三项均为 `null`。展示时可给 Base64 拼接 `data:image/jpeg;base64,` 前缀，并用 `<image mode="aspectFit">` 保留整帧。插件不保存图片；请避免记录完整结果对象。
 
@@ -128,7 +130,7 @@ detectLiveness({
 
 已有照片可调用 `syncFaceImage({ faceID, imageBase64 })`；已有同模型特征可调用 `syncFaceFeature({ faceID, feature, featureSpaceID })`。成功后直接按 `faceID` 验证，更新已有基准时显式传 `overwrite: true`。
 
-特征与 `featureSpaceID` 须成对传递，不能混用其他模型。同步、图片提取或基准存在均不代表身份、活体通过。完整参数、图片限制、回调类型与返回码见 [API 参考](https://github.com/FaceAISDK/HelloFace_uniapp/blob/main/docs/API.md)。
+特征与 `featureSpaceID` 须成对传递，不能混用其他模型。同步、图片提取或基准存在均不代表身份、活体通过。完整参数、图片限制、回调类型与返回码见 [API 参考](https://github.com/FaceSDKPro/HelloFace_uniapp/blob/main/docs/API.md)。
 
 ## 兼容环境
 
@@ -140,7 +142,7 @@ detectLiveness({
 | iOS | iOS 15+；本地构建需兼容 Swift 6.1.2 的 Xcode（16.3+） |
 | HarmonyOS | API 20+，ARM64，DevEco Studio 26 |
 
-人脸采集需真机摄像头，Web、小程序不支持。各平台实际结果见 [验证记录](https://github.com/FaceAISDK/HelloFace_uniapp/blob/main/docs/VALIDATION.md)。当前插件 0.2.3，底层 SDK 0.8.15。
+人脸采集需真机摄像头，Web、小程序不支持。各平台实际结果见 [验证记录](https://github.com/FaceSDKPro/HelloFace_uniapp/blob/main/docs/VALIDATION.md)。当前插件 0.2.3，底层 SDK 0.8.15。
 
 ## 常见问题
 
@@ -156,7 +158,7 @@ detectLiveness({
 
 未准备基准时提示“请先录入”，可先相机录入或同步已有基准；操作进行中返回 104，应等 `complete` 后再调用。常见提示直接展示 `msg`，业务按 `code` 分支。
 
-更多操作见 [Android 调试](https://github.com/FaceAISDK/HelloFace_uniapp/blob/main/docs/ANDROID_DEBUG.md)、[鸿蒙调试](https://github.com/FaceAISDK/HelloFace_uniapp/blob/main/docs/HARMONY_DEBUG.md)。反馈问题请到 [GitHub Issues](https://github.com/FaceAISDK/HelloFace_uniapp/issues)，附 HBuilderX 版本、机型、系统版本、复现步骤和日志，避免提交原始人脸特征。
+更多操作见 [Android 调试](https://github.com/FaceSDKPro/HelloFace_uniapp/blob/main/docs/ANDROID_DEBUG.md)、[鸿蒙调试](https://github.com/FaceSDKPro/HelloFace_uniapp/blob/main/docs/HARMONY_DEBUG.md)。反馈问题请到 [GitHub Issues](https://github.com/FaceSDKPro/HelloFace_uniapp/issues)，附 HBuilderX 版本、机型、系统版本、复现步骤和日志，避免提交原始人脸特征。
 
 ## 体验与联系
 

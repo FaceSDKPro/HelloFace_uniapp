@@ -29,7 +29,6 @@ final class HelloFaceVerifyCameraView: UIView {
     private let title = UILabel()
     private let phase = UILabel()
     private let tips = UIStackView()
-    private let confirmation = UILabel()
     private let retake = UIButton(type: .system)
     private let confirm = UIButton(type: .system)
     private var captured = false
@@ -85,7 +84,6 @@ final class HelloFaceVerifyCameraView: UIView {
             if let previous = previousTip { label.widthAnchor.constraint(equalTo: previous.widthAnchor).isActive = true }
             previousTip = label
         }
-        style(confirmation, text: UI.confirmation, size: UI.fontConfirmation, color: muted)
         style(retake, text: UI.retake, fill: .white, color: ink)
         retake.layer.borderColor = UI.colorButtonBorder.cgColor
         retake.layer.borderWidth = UI.borderWidth
@@ -105,7 +103,7 @@ final class HelloFaceVerifyCameraView: UIView {
         closeConfirmation.titleLabel?.font = .systemFont(ofSize: UI.fontDialogClose)
         closeConfirmation.accessibilityLabel = UI.cancelCapture
         closeConfirmation.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-        [photo, dialogDetail, confirmation].forEach { confirmationContent.addSubview($0) }
+        [photo, dialogDetail].forEach { confirmationContent.addSubview($0) }
         confirmationBody.addSubview(confirmationContent)
         [dialogTitle, closeConfirmation, confirmationBody, retake, confirm].forEach { confirmationCard.addSubview($0) }
         confirmationOverlay.addSubview(confirmationCard)
@@ -119,7 +117,7 @@ final class HelloFaceVerifyCameraView: UIView {
         captured = false; photo.image = nil; photo.isHidden = true
         confirmationOverlay.isHidden = true
         title.text = UI.liveTitle
-        phase.text = liveness ? UI.livenessPhase : UI.phase(enrollment: enrollment)
+        showPhase("")
         tips.isHidden = false
         [back, retake, confirm, closeConfirmation].forEach { $0.isEnabled = true; $0.alpha = 1 }
         confirm.setTitle(UI.confirm, for: .normal)
@@ -130,14 +128,19 @@ final class HelloFaceVerifyCameraView: UIView {
         guard !captured else { return }
         let guidance = UI.guidance(stage: stage, action: action)
         if title.text != guidance { title.text = guidance }
-        let phaseText = liveness && stage != "PERFORM_ACTION" ? UI.livenessPhase : UI.phase(enrollment: enrollment, stage: stage, step: step, count: count)
-        if phase.text != phaseText { phase.text = phaseText }
+        let phaseText = UI.phase(stage: stage, step: step, count: count)
+        showPhase(phaseText)
         updateCaptureProgress(stage: stage)
         updateActionCountdown(stage: stage, action: action, count: count, phaseText: phaseText)
         let color = (actionCountdown.deadline != nil ? UI.colorOuterRing : UI.isWarning(stage: stage) ? UI.colorAmber : (enrollment ? UI.colorOuterRing : blue)).cgColor
         if ring.strokeColor != color {
             CATransaction.begin(); CATransaction.setDisableActions(true); ring.strokeColor = color; CATransaction.commit()
         }
+    }
+
+    private func showPhase(_ text: String) {
+        if phase.text != text { phase.text = text }
+        phase.isHidden = text.isEmpty
     }
 
     func showConfirmation(image: UIImage?, mirrored: Bool) {
@@ -147,7 +150,7 @@ final class HelloFaceVerifyCameraView: UIView {
         photo.transform = CGAffineTransform(scaleX: mirrored ? -1 : 1, y: 1)
         dialogTitle.text = image == nil ? UI.missingTitle : UI.confirmTitle
         dialogDetail.text = image == nil ? UI.missingDetail : UI.confirmDetail
-        title.text = dialogTitle.text; phase.text = UI.confirmPhase
+        title.text = dialogTitle.text; showPhase(UI.confirmPhase)
         tips.isHidden = true
         [back, retake, closeConfirmation].forEach { $0.isEnabled = true; $0.alpha = 1 }
         confirm.setTitle(UI.confirm, for: .normal)
@@ -199,7 +202,7 @@ final class HelloFaceVerifyCameraView: UIView {
         actionCountdown.update(enrollment: enrollment, stage: stage, action: action, count: count,
                                timeoutMs: actionTimeoutMs, now: now)
         guard actionCountdown.deadline != nil else { resetActionCountdown(); return }
-        actionPhase = phaseText
+        if !phaseText.isEmpty { actionPhase = phaseText }
         drawActionCountdown()
         if actionTimer == nil && actionCountdown.remaining(at: now) > 0 {
             let timer = Timer(timeInterval: 0.033, repeats: true) { [weak self] _ in
@@ -213,7 +216,7 @@ final class HelloFaceVerifyCameraView: UIView {
         guard actionCountdown.deadline != nil else { return }
         let now = ProcessInfo.processInfo.systemUptime
         let remaining = actionCountdown.remaining(at: now)
-        phase.text = "\(actionPhase) · \(Int(ceil(remaining)))\(UI.countdownSuffix)"
+        showPhase("\(actionPhase) · \(Int(ceil(remaining)))\(UI.countdownSuffix)")
         CATransaction.begin(); CATransaction.setDisableActions(true)
         ring.strokeColor = UI.colorOuterRing.cgColor
         progressRing.strokeEnd = CGFloat(actionCountdown.progress(at: now))
@@ -279,21 +282,16 @@ final class HelloFaceVerifyCameraView: UIView {
         let side = photo.image == nil ? 0 : min(UI.dialogPhotoSide, contentWidth)
         dialogTitle.frame = CGRect(x: padding, y: padding, width: contentWidth - UI.dialogCloseSize, height: UI.dialogHeadingHeight)
         closeConfirmation.frame = CGRect(x: width - padding - UI.dialogCloseSize, y: padding, width: UI.dialogCloseSize, height: UI.dialogHeadingHeight)
-        var y: CGFloat = 0
         if side > 0 {
             photo.bounds = CGRect(x: 0, y: 0, width: side, height: side)
-            photo.center = CGPoint(x: contentWidth / 2, y: y + side / 2)
+            photo.center = CGPoint(x: contentWidth / 2, y: side / 2)
             photo.layer.cornerRadius = UI.dialogPhotoRadius
-            y += side + UI.dialogGap
         }
-        for label in [dialogDetail, confirmation] {
-            if label === confirmation { y += UI.dialogTextGap }
-            let height = max(label === dialogDetail ? UI.detailHeight : UI.confirmationHeight,
-                ceil(label.sizeThatFits(CGSize(width: contentWidth, height: .greatestFiniteMagnitude)).height))
-            label.frame = CGRect(x: 0, y: y, width: contentWidth, height: height)
-            y += height
-        }
-        let contentHeight = y
+        let detailY = side > 0 ? side + UI.dialogGap : 0
+        let detailHeight = max(UI.detailHeight,
+            ceil(dialogDetail.sizeThatFits(CGSize(width: contentWidth, height: .greatestFiniteMagnitude)).height))
+        dialogDetail.frame = CGRect(x: 0, y: detailY, width: contentWidth, height: detailHeight)
+        let contentHeight = detailY + detailHeight
         let availableHeight = max(1, bounds.height - safe.top - safe.bottom - UI.dialogInset * 2)
         let fixedHeight = padding * 2 + UI.dialogHeadingHeight + UI.dialogGap * 2 + UI.buttonHeight
         let bodyHeight = min(contentHeight, max(1, availableHeight - fixedHeight))

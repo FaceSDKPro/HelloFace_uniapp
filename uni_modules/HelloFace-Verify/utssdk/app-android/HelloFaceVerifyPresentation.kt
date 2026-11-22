@@ -18,15 +18,12 @@ internal object HelloFaceVerifyPresentation {
     const val backLabel: String = "返回"
     const val photoLabel: String = "已采集的人脸照片"
     const val preparingTitle: String = "正在准备相机"
-    const val liveTitle: String = "请正对镜头"
-    const val enrollPhase: String = "第一步 · 人脸采集"
-    const val verifyPhase: String = "实时身份核验"
+    const val liveTitle: String = "请正对屏幕"
     const val confirmPhase: String = "第二步 · 确认保存"
     const val actionPhase: String = "动作验证"
     const val tipCenter: String = "人脸居中"
     const val tipLight: String = "光线均匀"
     const val tipClear: String = "面部无遮挡"
-    const val confirmation: String = "确认后将加密保存人脸特征，不保存照片"
     const val retake: String = "重新采集"
     const val confirm: String = "确认录入"
     const val missingTitle: String = "未能生成预览"
@@ -37,10 +34,8 @@ internal object HelloFaceVerifyPresentation {
     const val savingDetail: String = "即将完成，请稍候"
     const val savingButton: String = "正在保存…"
     const val actionFallback: String = "请按提示完成动作"
-    const val stageFallback: String = "请正对镜头"
     const val cancelCapture: String = "取消录入"
     const val livenessHeading: String = "活体检测"
-    const val livenessPhase: String = "实时活体检测"
     const val countdownSuffix: String = "秒"
     const val sideInset: Int = 24
     const val headerInset: Int = 8
@@ -59,7 +54,6 @@ internal object HelloFaceVerifyPresentation {
     const val phaseHeight: Int = 26
     const val buttonGap: Int = 12
     const val buttonHeight: Int = 50
-    const val confirmationHeight: Int = 36
     const val tipsOffset: Int = 73
     const val tipsHeight: Int = 48
     const val tipsRadius: Int = 18
@@ -75,7 +69,6 @@ internal object HelloFaceVerifyPresentation {
     const val dialogPhotoSide: Int = 188
     const val dialogPhotoRadius: Int = 16
     const val dialogGap: Int = 16
-    const val dialogTextGap: Int = 8
     const val dialogHeadingHeight: Int = 32
     const val dialogCloseSize: Int = 32
     const val circleExpansion: Int = 7
@@ -84,11 +77,10 @@ internal object HelloFaceVerifyPresentation {
     const val backIconHeight: Int = 16
     const val backIconStroke: Int = 2
     const val fontHeading: Float = 17.0f
-    const val fontTitle: Float = 25.0f
+    const val fontTitle: Float = 21.0f
     const val fontDetail: Float = 13.0f
     const val fontPhase: Float = 12.0f
     const val fontTip: Float = 12.0f
-    const val fontConfirmation: Float = 13.0f
     const val fontButton: Float = 15.0f
     const val fontDialogHeading: Float = 18.0f
     const val fontDialogClose: Float = 24.0f
@@ -105,18 +97,18 @@ internal object HelloFaceVerifyPresentation {
             else -> actionFallback
         }
         return when (stage) {
-            "WAITING_FOR_FACE" -> "请正对镜头"
             "MULTIPLE_FACES" -> "请保持画面中只有一人"
             "FACE_TOO_SMALL" -> "请靠近一些"
-            "FACE_NOT_FRONTAL" -> "请正对镜头"
-            "HOLD_STILL" -> "请保持面部稳定"
-            "FACE_FORWARD" -> "请正对镜头"
-            "FACE_UNSTABLE" -> "请保持面部稳定"
-            else -> stageFallback
+            else -> liveTitle
         }
     }
-    fun phase(enrollment: Boolean, stage: String = "", step: Int = 0, count: Int = 0): String =
+    fun speechGuidance(stage: String, action: String?): String? {
+        if (stage == "PERFORM_ACTION" && action !in listOf("blink", "openMouth", "shakeHead", "nodHead")) return null
+        if (stage != "PERFORM_ACTION" && stage !in listOf("WAITING_FOR_FACE", "MULTIPLE_FACES", "FACE_TOO_SMALL", "FACE_NOT_FRONTAL", "FACE_FORWARD", "HOLD_STILL")) return null
+        return guidance(stage, action)
+    }
+    fun phase(stage: String, step: Int, count: Int): String =
         if (stage == "PERFORM_ACTION" && count > 0) "$actionPhase · $step/$count"
-        else if (enrollment) enrollPhase else verifyPhase
+        else ""
     fun isWarning(stage: String): Boolean = stage in listOf("MULTIPLE_FACES", "FACE_TOO_SMALL", "FACE_NOT_FRONTAL")
 }

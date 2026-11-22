@@ -1,7 +1,7 @@
 {
   "version": "0.8.15",
   "repository": "FaceSDKPro/HelloFace",
-  "commit": "53da79b320f872d75209c35ba6351a792023b920",
+  "commit": "4d8d7e8dc2b0a765fdd9bd25e0afc70ec654484f",
   "artifacts": [
     {
       "platform": "android",

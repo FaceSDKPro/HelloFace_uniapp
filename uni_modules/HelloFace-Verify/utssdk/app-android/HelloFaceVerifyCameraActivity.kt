@@ -65,6 +65,8 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
     private val shutdownCallbacks = mutableListOf<() -> Unit>()
     private var previousBrightness: Float? = null
     private var brightnessApplied = false
+    private var resumed = false
+    private var speech: HelloFaceVerifySpeech? = null
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (active()) {
             if (granted) begin() else fail("PERMISSION_DENIED", "Camera permission denied")
@@ -121,7 +123,9 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
     private fun active() = HelloFaceVerifyNative.job?.let { it.id == jobID && !it.ending } == true && !stopping && !isFinishing
     override fun onResume() {
         super.onResume()
+        resumed = true
         if (active()) {
+            speech?.setActive(true)
             // 只覆盖相机窗口；保留 -1（跟随系统）及宿主原有的窗口亮度策略。
             if (previousBrightness == null) previousBrightness = window.attributes.screenBrightness
             window.attributes = window.attributes.apply { screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
@@ -129,6 +133,8 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
         }
     }
     override fun onPause() {
+        resumed = false
+        speech?.setActive(false)
         restoreBrightness()
         super.onPause()
     }
@@ -140,6 +146,7 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
     }
     private fun begin() {
         if (!active()) return
+        if (current.method != "enrollFace" && speech == null) speech = HelloFaceVerifySpeech(this, resumed)
         val attempt = ++generation
         try {
             val instance = HiFaceSdk.builder(this).lifecycleOwner(this).build()
@@ -243,6 +250,8 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
         val action = progress.action?.let { actionName(it) }
         val stage = progress.stage.name
         screen.showProgress(stage, action, progress.stepNumber, progress.stepCount)
+        speech?.update(HelloFaceVerifyPresentation.speechGuidance(stage, action),
+            if (stage == "PERFORM_ACTION") progress.stepNumber else 0)
         HelloFaceVerifyNative.progress(jobID, JSONObject().put("stage", stage).put("action", action ?: JSONObject.NULL)
             .put("stepNumber", progress.stepNumber).put("stepCount", progress.stepCount))
     }
@@ -284,12 +293,14 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
     private fun finishResult(data: JSONObject) {
         if (!active()) return
         stopping = true
+        speech?.setActive(false)
         HelloFaceVerifyNative.finish(jobID, HelloFaceVerifyNative.envelope(data = data))
     }
     private fun fail(code: String, message: String) {
         if (!active()) return
         if (code == "CANCELLED" && current.committing) return
         stopping = true
+        speech?.setActive(false)
         HelloFaceVerifyNative.finish(jobID, HelloFaceVerifyNative.envelope("error", code, message))
     }
     override fun onStop() {
@@ -326,6 +337,7 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
         shutdownCallbacks.add(completion)
         if (shutdownCallbacks.size > 1) return
         stopping = true
+        speech?.close(); speech = null
         if (::screen.isInitialized) screen.clearPhoto()
         restoreBrightness()
         generation++

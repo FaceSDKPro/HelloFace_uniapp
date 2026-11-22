@@ -17,15 +17,12 @@
     "backLabel": "返回",
     "photoLabel": "已采集的人脸照片",
     "preparingTitle": "正在准备相机",
-    "liveTitle": "请正对镜头",
-    "enrollPhase": "第一步 · 人脸采集",
-    "verifyPhase": "实时身份核验",
+    "liveTitle": "请正对屏幕",
     "confirmPhase": "第二步 · 确认保存",
     "actionPhase": "动作验证",
     "tipCenter": "人脸居中",
     "tipLight": "光线均匀",
     "tipClear": "面部无遮挡",
-    "confirmation": "确认后将加密保存人脸特征，不保存照片",
     "retake": "重新采集",
     "confirm": "确认录入",
     "missingTitle": "未能生成预览",
@@ -36,10 +33,8 @@
     "savingDetail": "即将完成，请稍候",
     "savingButton": "正在保存…",
     "actionFallback": "请按提示完成动作",
-    "stageFallback": "请正对镜头",
     "cancelCapture": "取消录入",
     "livenessHeading": "活体检测",
-    "livenessPhase": "实时活体检测",
     "countdownSuffix": "秒"
   },
   "metrics": {
@@ -60,7 +55,6 @@
     "phaseHeight": 26,
     "buttonGap": 12,
     "buttonHeight": 50,
-    "confirmationHeight": 36,
     "tipsOffset": 73,
     "tipsHeight": 48,
     "tipsRadius": 18,
@@ -76,7 +70,6 @@
     "dialogPhotoSide": 188,
     "dialogPhotoRadius": 16,
     "dialogGap": 16,
-    "dialogTextGap": 8,
     "dialogHeadingHeight": 32,
     "dialogCloseSize": 32,
     "circleExpansion": 7,
@@ -87,11 +80,10 @@
   },
   "fonts": {
     "heading": 17,
-    "title": 25,
+    "title": 21,
     "detail": 13,
     "phase": 12,
     "tip": 12,
-    "confirmation": 13,
     "button": 15,
     "dialogHeading": 18,
     "dialogClose": 24
@@ -102,13 +94,8 @@
     "dialogScrimAlpha": 0.62
   },
   "stages": {
-    "WAITING_FOR_FACE": "请正对镜头",
     "MULTIPLE_FACES": "请保持画面中只有一人",
-    "FACE_TOO_SMALL": "请靠近一些",
-    "FACE_NOT_FRONTAL": "请正对镜头",
-    "HOLD_STILL": "请保持面部稳定",
-    "FACE_FORWARD": "请正对镜头",
-    "FACE_UNSTABLE": "请保持面部稳定"
+    "FACE_TOO_SMALL": "请靠近一些"
   },
   "actions": {
     "blink": "请眨眨眼",
@@ -116,6 +103,14 @@
     "shakeHead": "请左右摇头",
     "nodHead": "请缓慢点头"
   },
+  "speechStages": [
+    "WAITING_FOR_FACE",
+    "MULTIPLE_FACES",
+    "FACE_TOO_SMALL",
+    "FACE_NOT_FRONTAL",
+    "FACE_FORWARD",
+    "HOLD_STILL"
+  ],
   "warningStages": [
     "MULTIPLE_FACES",
     "FACE_TOO_SMALL",

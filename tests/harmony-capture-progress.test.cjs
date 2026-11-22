@@ -108,6 +108,7 @@ test('Harmony confirmation: missing preview releases space and short screens kee
   Object.assign(dialog, { viewportWidth: 390, viewportHeight: 844, safeLeft: 0, safeRight: 0, safeTop: 47, safeBottom: 34, photo: {} })
   const full = dialog.confirmationBodyHeight()
   dialog.photo = undefined
+  assert.equal(dialog.confirmationBodyHeight(), spec.metrics.detailHeight)
   assert.equal(full - dialog.confirmationBodyHeight(), 188 + 16)
   dialog.photo = {}
   dialog.viewportHeight = 360
@@ -132,9 +133,11 @@ test('Harmony action countdown: total duration, repeated progress and next actio
   assert.equal(overlay.actionDeadline, 6000)
   assert.equal(overlay.phase, '动作验证 · 2/2 · 5秒')
   assert.equal(timers.size, 1)
+  overlay.phase = ''
   overlay.updateActionCountdown('WAITING_FOR_FACE', 'nodHead', 2)
   tick(4500)
   assert.equal(overlay.actionProgress, 0.25)
+  assert.equal(overlay.phase, '动作验证 · 2/2 · 2秒')
   tick(7000)
   assert.equal(overlay.actionProgress, 0)
   assert.equal(timers.size, 0)

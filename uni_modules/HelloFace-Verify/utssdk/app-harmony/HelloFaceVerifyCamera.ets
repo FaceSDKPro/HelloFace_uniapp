@@ -10,6 +10,7 @@ import { HiFaceSdk, FaceRequest, FaceFlowListener, FaceFlowProgress, FaceFlowRes
 import { BridgeError, FaceParams, NativeData, envelope, errorEnvelope, unwrap } from './BridgeTypes';
 import { ReferenceStore } from './ReferenceStore';
 import { HelloFaceVerifyPresentation as UI } from './HelloFaceVerifyPresentation';
+import { HelloFaceVerifySpeech } from './HelloFaceVerifySpeech';
 
 const CAMERA_BACKGROUND: string = UI.colorBackground;
 const CAMERA_INK: string = UI.colorInk;
@@ -28,7 +29,7 @@ function cameraDialog(params: DialogParams) { FaceCameraDialog({ flow: params.fl
 struct FaceCameraDialog {
   flow: CameraFlow | undefined = undefined;
   @State guidance: string = UI.liveTitle;
-  @State phase: string = UI.verifyPhase;
+  @State phase: string = '';
   @State warning: boolean = false;
   @State captured: boolean = false;
   @State saving: boolean = false;
@@ -60,12 +61,11 @@ struct FaceCameraDialog {
     this.safeTop = flow.safeTop; this.safeBottom = flow.safeBottom;
     this.safeLeft = flow.safeLeft; this.safeRight = flow.safeRight;
     this.viewportWidth = flow.viewportWidth; this.viewportHeight = flow.viewportHeight;
-    this.phase = flow.isLiveness() ? UI.livenessPhase : UI.phase(flow.isEnrollment());
     flow.onPreviewSize = (width: number, height: number): void => { this.previewRatio = width / height; };
     flow.onStatus = (stage: string, action: string | undefined, step: number, count: number): void => {
       if (!this.visible || this.captured) return;
       this.guidance = UI.guidance(stage, action);
-      this.phase = flow.isLiveness() && stage !== 'PERFORM_ACTION' ? UI.livenessPhase : UI.phase(flow.isEnrollment(), stage, step, count);
+      this.phase = UI.phase(stage, step, count);
       this.warning = UI.isWarning(stage);
       this.updateCaptureProgress(stage);
       this.updateActionCountdown(stage, action, count);
@@ -76,7 +76,7 @@ struct FaceCameraDialog {
       this.resetCaptureProgress(); this.resetActionCountdown();
       this.photo = value; this.captured = ready; this.saving = false; this.warning = false;
       this.guidance = ready ? (value === undefined ? UI.missingTitle : UI.confirmTitle) : UI.liveTitle;
-      this.phase = ready ? UI.confirmPhase : UI.phase(flow.isEnrollment());
+      this.phase = ready ? UI.confirmPhase : '';
       this.drawMask();
     };
   }
@@ -133,7 +133,7 @@ struct FaceCameraDialog {
       (stage === 'PERFORM_ACTION' || action !== undefined) &&
       !['FACE_FORWARD', 'FACE_NOT_FRONTAL', 'HOLD_STILL', 'FACE_UNSTABLE'].includes(stage);
     if (!active) { this.resetActionCountdown(); return; }
-    this.actionPhase = this.phase;
+    if (this.phase.length > 0) this.actionPhase = this.phase;
     // 同一动作序列共用截止时刻；重复进度、换动作、短暂丢脸均不重启。
     if (this.actionDeadline < 0 && stage === 'PERFORM_ACTION') {
       this.actionDuration = (this.flow?.actionTimeout() ?? 3000) * count;
@@ -199,7 +199,7 @@ struct FaceCameraDialog {
   }
   private confirmationBodyHeight(): number {
     const photoHeight = this.photo === undefined ? 0 : this.confirmationPhotoSide() + UI.dialogGap;
-    const content = photoHeight + UI.detailHeight + UI.dialogTextGap + UI.confirmationHeight;
+    const content = photoHeight + UI.detailHeight;
     const available = this.viewportHeight - this.safeTop - this.safeBottom - UI.dialogInset * 2 - UI.dialogPadding * 2 -
       UI.dialogHeadingHeight - UI.dialogGap * 2 - UI.buttonHeight;
     return Math.min(content, Math.max(1, available));
@@ -222,12 +222,8 @@ struct FaceCameraDialog {
         Scroll() {
           Column({ space: UI.dialogGap }) {
             if (this.photo !== undefined) { this.CapturePhoto(this.photo) }
-            Column({ space: UI.dialogTextGap }) {
-              Text(this.saving ? UI.savingDetail : (this.photo === undefined ? UI.missingDetail : UI.confirmDetail))
-                .fontSize(UI.fontDetail).fontColor(CAMERA_MUTED).textAlign(TextAlign.Center).width('100%').height(UI.detailHeight).maxLines(2)
-              Text(UI.confirmation).fontSize(UI.fontConfirmation).fontColor(CAMERA_MUTED)
-                .textAlign(TextAlign.Center).width('100%').height(UI.confirmationHeight).maxLines(2)
-            }.width('100%')
+            Text(this.saving ? UI.savingDetail : (this.photo === undefined ? UI.missingDetail : UI.confirmDetail))
+              .fontSize(UI.fontDetail).fontColor(CAMERA_MUTED).textAlign(TextAlign.Center).width('100%').height(UI.detailHeight).maxLines(2)
           }.width('100%')
         }.width('100%').height(this.confirmationBodyHeight()).scrollBar(BarState.Auto)
         Row({ space: UI.buttonGap }) {
@@ -275,9 +271,11 @@ struct FaceCameraDialog {
       Text(this.saving ? UI.savingTitle : this.guidance).fontSize(UI.fontTitle).fontWeight(FontWeight.Medium).fontColor(CAMERA_INK)
         .textAlign(TextAlign.Center).maxLines(2).width(this.contentWidth()).height(UI.titleHeight)
         .position({ x: this.contentLeft(), y: this.titleY() })
-      Text(this.phase).fontSize(UI.fontPhase).fontColor(CAMERA_BLUE).textAlign(TextAlign.Center)
-        .backgroundColor(UI.colorPhaseFill).borderRadius(UI.pillRadius).width(Math.min(this.contentWidth(), UI.phaseWidth)).height(UI.phaseHeight)
-        .position({ x: this.centerX() - Math.min(this.contentWidth(), UI.phaseWidth) / 2, y: this.phaseY() })
+      if (this.phase.length > 0) {
+        Text(this.phase).fontSize(UI.fontPhase).fontColor(CAMERA_BLUE).textAlign(TextAlign.Center)
+          .backgroundColor(UI.colorPhaseFill).borderRadius(UI.pillRadius).width(Math.min(this.contentWidth(), UI.phaseWidth)).height(UI.phaseHeight)
+          .position({ x: this.centerX() - Math.min(this.contentWidth(), UI.phaseWidth) / 2, y: this.phaseY() })
+      }
       if (!this.captured) {
         Row() {
           Text(UI.tipCenter).fontSize(UI.fontTip).fontColor(CAMERA_INK).textAlign(TextAlign.Center).layoutWeight(1)
@@ -307,6 +305,7 @@ export class CameraFlow {
   private readonly reference: string | undefined;
   private readonly progressCallback: (value: string) => void;
   private readonly completion: (value: string) => void;
+  private speech: HelloFaceVerifySpeech | undefined = undefined;
   private dialog: ComponentContent<DialogParams> | undefined = undefined;
   private session: camera.VideoSession | undefined = undefined;
   private input: camera.CameraInput | undefined = undefined;
@@ -356,6 +355,7 @@ export class CameraFlow {
   }
   open(): void {
     try {
+      if (!this.isEnrollment()) this.speech = new HelloFaceVerifySpeech();
       this.mainWindow.on('windowEvent', this.visibility);
       const ui = this.mainWindow.getUIContext();
       const properties = this.mainWindow.getWindowProperties();
@@ -528,6 +528,7 @@ export class CameraFlow {
     }
     const stage = FaceFlowStage[value.stage];
     this.onStatus(stage, action, value.stepNumber, value.stepCount);
+    this.speech?.update(UI.speechGuidance(stage, action), stage === 'PERFORM_ACTION' ? value.stepNumber : 0);
     this.progressCallback(envelope('progress', 'OK', '', { stage: stage, action: action,
       stepNumber: value.stepNumber, stepCount: value.stepCount }));
   }
@@ -606,6 +607,7 @@ export class CameraFlow {
     if (this.ended) return;
     // 先屏蔽旧事件，再释放相机/窗口；释放完成后才能归还原生操作槽。
     this.ended = true; this.generation++; this.accepting = false; this.request?.cancel();
+    this.speech?.close(); this.speech = undefined;
     this.restoreScreen();
     this.shutdown().then((): void => { this.completion(response); }, (): void => { this.completion(response); });
   }

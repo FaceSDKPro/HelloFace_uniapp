@@ -5,6 +5,12 @@
       "style": {
         "navigationBarTitleText": "HelloFaceVerify Demo"
       }
+    },
+    {
+      "path": "pages/website/index",
+      "style": {
+        "navigationBarTitleText": "HelloFace 官网"
+      }
     }
   ],
   "globalStyle": {

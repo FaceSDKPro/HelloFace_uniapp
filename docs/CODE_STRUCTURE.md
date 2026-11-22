@@ -6,9 +6,9 @@
 
 录入只需 `enrollFace({ faceID, success, fail, complete })`；验证只需 `verifyFace({ faceID, success, fail, complete })`。默认前置相机、阈值 0.80、开启静默活体。静默与动作独立：Demo 用两个开关展示四种组合，显式传入 `silentLiveness`，开启动作时传当前勾选的 `actions`，关闭时传空数组。保留插件默认值与阈值，录入和存储行为不受验证选项影响。
 
-根 Vue 和独立 uvue 示例保持相同的按钮与调用顺序：每个动作直接调用 API，`begin` 拦截重复点击，`showResult / showError` 只展示结果，`finish` 在 complete 中解除忙碌。Vue/uvue Options API 的页面方法用作回调时保持页面实例绑定；uvue 的结果、错误和 complete 参数按接口声明提供类型。删除先确认，离页取消相机任务，页面不保留返回的原始生物特征。同步按钮使用内置 AI 演示基准，与录入、验证、删除共用当前 `faceID`（默认 `demo-user`），说明见 [外部基准](../demo/README.md)。
+根 Vue 和独立 uvue 示例均在页面 `methods` 开头直接调用公开 API。`begin` 防止重复点击，`showResult` 和 `showError` 将插件回调交给 `presentResult` 展示，`finish` 在 `complete` 中恢复按钮。页面离开时取消进行中的相机任务，原始特征不写入页面状态。
 
-同步图片/特征在调用前显示加载提示；success/fail 先关闭加载层，再显示 2 秒 msg/code Toast，complete 只解除 busy，离页也关闭加载层。避免 complete 在 Toast 之后再次 hideLoading，将结果提示一起关闭。
+图片和特征同步使用内置 [外部基准](../demo/README.md)。覆盖既有基准和删除共用确认逻辑，弹窗显示本次提交的 `faceID`。同步加载提示在结果 Toast 前关闭，返回码显示在底部结果卡片。结束帧随卡片宽度等比显示，页面开始下一次操作或离开时释放。
 
 `success` 表示接口正常完成，验证必须检查 `passed === true`；2xx 未通过结果仍走 success。`complete` 只做收尾；不要在这里读取业务字段，也不要因相似度高而改写 passed。
 
@@ -45,8 +45,6 @@ Demo 宿主的鸿蒙发行配置位于根目录 `harmony-configs/entry` 和 `har
 导航标题使用返回按钮右侧的剩余宽度，单行显示并在空间不足时尾部省略，避免固定宽度在大字体时换行。返回按钮点击区域统一为 48 个逻辑单位；标题与按钮共用顶部及高度。尺寸和间距从 native-ui.json 生成，已经不再使用的旧确认页定位常量不保留。
 
 返回箭头不使用字体字符 ‹：Android 由 Button 绘制路径，iOS 使用 CAShapeLayer，鸿蒙使用 Path，避免字体基线使字形看起来偏移。鸿蒙 Path commands 的像素坐标须通过当前 UIContext.vp2px 换算，并对汉字墨迹中心作 1vp 的图形补偿；不能仅凭按钮/标题控件边界相同便认定视觉对齐。
-
-Demo 的所有业务接口在 `showResult / showError` 中统一 Toast 接口返回的 `msg，code: 数值`，持续 2 秒；成功、未通过和调用错误均保留底部完整结果。code 105 同样直接展示返回文案，不额外预读 getFaceStatue；离页先解除当前展示状态再取消，迟到回调和删除弹窗不能继续操作；正常调用仍由 complete 解除 busy。
 
 原生任务标识（Android job ID、iOS activeID、鸿蒙 generation）隔离取消、重拍和下一轮操作。鸿蒙授权弹窗尚未返回时也可能取消，必须在 await 之后重新检查代次。不要只隐藏相机页面而保留旧任务。
 

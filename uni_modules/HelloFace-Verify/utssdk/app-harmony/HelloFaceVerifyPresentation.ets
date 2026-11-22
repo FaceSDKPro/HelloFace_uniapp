@@ -16,15 +16,12 @@ export class HelloFaceVerifyPresentation {
     static readonly backLabel: string = "返回";
     static readonly photoLabel: string = "已采集的人脸照片";
     static readonly preparingTitle: string = "正在准备相机";
-    static readonly liveTitle: string = "请正对镜头";
-    static readonly enrollPhase: string = "第一步 · 人脸采集";
-    static readonly verifyPhase: string = "实时身份核验";
+    static readonly liveTitle: string = "请正对屏幕";
     static readonly confirmPhase: string = "第二步 · 确认保存";
     static readonly actionPhase: string = "动作验证";
     static readonly tipCenter: string = "人脸居中";
     static readonly tipLight: string = "光线均匀";
     static readonly tipClear: string = "面部无遮挡";
-    static readonly confirmation: string = "确认后将加密保存人脸特征，不保存照片";
     static readonly retake: string = "重新采集";
     static readonly confirm: string = "确认录入";
     static readonly missingTitle: string = "未能生成预览";
@@ -35,10 +32,8 @@ export class HelloFaceVerifyPresentation {
     static readonly savingDetail: string = "即将完成，请稍候";
     static readonly savingButton: string = "正在保存…";
     static readonly actionFallback: string = "请按提示完成动作";
-    static readonly stageFallback: string = "请正对镜头";
     static readonly cancelCapture: string = "取消录入";
     static readonly livenessHeading: string = "活体检测";
-    static readonly livenessPhase: string = "实时活体检测";
     static readonly countdownSuffix: string = "秒";
     static readonly sideInset: number = 24;
     static readonly headerInset: number = 8;
@@ -57,7 +52,6 @@ export class HelloFaceVerifyPresentation {
     static readonly phaseHeight: number = 26;
     static readonly buttonGap: number = 12;
     static readonly buttonHeight: number = 50;
-    static readonly confirmationHeight: number = 36;
     static readonly tipsOffset: number = 73;
     static readonly tipsHeight: number = 48;
     static readonly tipsRadius: number = 18;
@@ -73,7 +67,6 @@ export class HelloFaceVerifyPresentation {
     static readonly dialogPhotoSide: number = 188;
     static readonly dialogPhotoRadius: number = 16;
     static readonly dialogGap: number = 16;
-    static readonly dialogTextGap: number = 8;
     static readonly dialogHeadingHeight: number = 32;
     static readonly dialogCloseSize: number = 32;
     static readonly circleExpansion: number = 7;
@@ -82,11 +75,10 @@ export class HelloFaceVerifyPresentation {
     static readonly backIconHeight: number = 16;
     static readonly backIconStroke: number = 2;
     static readonly fontHeading: number = 17;
-    static readonly fontTitle: number = 25;
+    static readonly fontTitle: number = 21;
     static readonly fontDetail: number = 13;
     static readonly fontPhase: number = 12;
     static readonly fontTip: number = 12;
-    static readonly fontConfirmation: number = 13;
     static readonly fontButton: number = 15;
     static readonly fontDialogHeading: number = 18;
     static readonly fontDialogClose: number = 24;
@@ -105,19 +97,19 @@ export class HelloFaceVerifyPresentation {
             }
         }
         switch (stage) {
-            case "WAITING_FOR_FACE": return "请正对镜头";
             case "MULTIPLE_FACES": return "请保持画面中只有一人";
             case "FACE_TOO_SMALL": return "请靠近一些";
-            case "FACE_NOT_FRONTAL": return "请正对镜头";
-            case "HOLD_STILL": return "请保持面部稳定";
-            case "FACE_FORWARD": return "请正对镜头";
-            case "FACE_UNSTABLE": return "请保持面部稳定";
-            default: return HelloFaceVerifyPresentation.stageFallback;
+            default: return HelloFaceVerifyPresentation.liveTitle;
         }
     }
-    static phase(enrollment: boolean, stage: string = "", step: number = 0, count: number = 0): string {
+    static speechGuidance(stage: string, action: string | undefined): string | undefined {
+        if (stage === "PERFORM_ACTION" && (action === undefined || !["blink", "openMouth", "shakeHead", "nodHead"].includes(action))) return undefined;
+        if (stage !== "PERFORM_ACTION" && !["WAITING_FOR_FACE", "MULTIPLE_FACES", "FACE_TOO_SMALL", "FACE_NOT_FRONTAL", "FACE_FORWARD", "HOLD_STILL"].includes(stage)) return undefined;
+        return HelloFaceVerifyPresentation.guidance(stage, action);
+    }
+    static phase(stage: string, step: number, count: number): string {
         if (stage === "PERFORM_ACTION" && count > 0) return `${HelloFaceVerifyPresentation.actionPhase} · ${step}/${count}`;
-        return enrollment ? HelloFaceVerifyPresentation.enrollPhase : HelloFaceVerifyPresentation.verifyPhase;
+        return "";
     }
     static isWarning(stage: string): boolean {
         return ["MULTIPLE_FACES", "FACE_TOO_SMALL", "FACE_NOT_FRONTAL"].includes(stage);

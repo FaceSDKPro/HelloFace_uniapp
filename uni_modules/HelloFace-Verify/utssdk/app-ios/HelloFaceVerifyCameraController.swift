@@ -8,6 +8,7 @@ final class HelloFaceVerifyCameraController: UIViewController {
     private let reference: String?
     private let onProgress: ([String: Any]) -> Void
     private let completion: (String) -> Void
+    private let speech: HelloFaceVerifySpeech?
     private var pipeline: HelloFaceVerifyCameraPipeline?
     private var preview: AVCaptureVideoPreviewLayer?
     private var request: FaceRequest?
@@ -24,12 +25,14 @@ final class HelloFaceVerifyCameraController: UIViewController {
     private var brightnessScreen: UIScreen?
     private var previousBrightness: CGFloat?
     private var brightnessApplied = false
+    private var cameraVisible = false
     private var isFront: Bool { (params["camera"] as? String ?? "front") == "front" }
 
     init(method: String, params: [String: Any], reference: String?,
          progress: @escaping ([String: Any]) -> Void, completion: @escaping (String) -> Void) {
         self.method = method; self.params = params; self.reference = reference
         self.onProgress = progress; self.completion = completion
+        self.speech = method == "enrollFace" ? nil : HelloFaceVerifySpeech()
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("Use the designated initializer") }
@@ -50,12 +53,18 @@ final class HelloFaceVerifyCameraController: UIViewController {
             NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification,
                 object: nil, queue: .main) { [weak self] _ in
                     guard let self = self else { return }
-                    DispatchQueue.main.async { self.restoreBrightness() }
+                    DispatchQueue.main.async {
+                        self.speech?.setActive(false)
+                        self.restoreBrightness()
+                    }
                 },
             NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
                 object: nil, queue: .main) { [weak self] _ in
                     guard let self = self else { return }
-                    DispatchQueue.main.async { self.maximizeBrightness() }
+                    DispatchQueue.main.async {
+                        self.resumeSpeechIfVisible()
+                        self.maximizeBrightness()
+                    }
                 }
         ]
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -75,6 +84,8 @@ final class HelloFaceVerifyCameraController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        cameraVisible = true
+        resumeSpeechIfVisible()
         maximizeBrightness()
         if !ended && previousIdleTimer == nil {
             previousIdleTimer = UIApplication.shared.isIdleTimerDisabled
@@ -93,8 +104,13 @@ final class HelloFaceVerifyCameraController: UIViewController {
         if !ended { cancel() }
     }
     override func viewWillDisappear(_ animated: Bool) {
+        cameraVisible = false
+        speech?.setActive(false)
         restoreBrightness()
         super.viewWillDisappear(animated)
+    }
+    private func resumeSpeechIfVisible() {
+        if !ended && cameraVisible && UIApplication.shared.applicationState == .active { speech?.setActive(true) }
     }
     private func maximizeBrightness() {
         guard !ended, viewIfLoaded?.window != nil, UIApplication.shared.applicationState == .active,
@@ -174,6 +190,8 @@ final class HelloFaceVerifyCameraController: UIViewController {
         let action = value.action.map { Self.actionName($0) }
         let stage = Self.stageName(value.stage)
         screen.showProgress(stage: stage, action: action, step: Int(value.stepNumber), count: Int(value.stepCount))
+        speech?.update(HelloFaceVerifyPresentation.speechGuidance(stage: stage, action: action),
+                       actionStep: stage == "PERFORM_ACTION" ? Int(value.stepNumber) : 0)
         onProgress(["stage": stage, "action": action as Any? ?? NSNull(),
                     "stepNumber": value.stepNumber, "stepCount": value.stepCount])
     }
@@ -223,6 +241,7 @@ final class HelloFaceVerifyCameraController: UIViewController {
     private func fail(_ code: String, _ message: String) { finish(HelloFaceVerifyOperation.envelope("error", code, message)) }
     private func finish(_ response: String) {
         guard lifecycle.finish(response) else { return }
+        speech?.close()
         restoreBrightness(); restoreIdleTimer(); screen.clearPhoto()
         captured = nil; request?.cancel(); request = nil
         if let observer = backgroundObserver { NotificationCenter.default.removeObserver(observer) }

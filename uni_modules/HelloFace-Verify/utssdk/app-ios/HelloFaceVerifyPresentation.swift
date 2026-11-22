@@ -18,15 +18,12 @@ enum HelloFaceVerifyPresentation {
     static let backLabel = "返回"
     static let photoLabel = "已采集的人脸照片"
     static let preparingTitle = "正在准备相机"
-    static let liveTitle = "请正对镜头"
-    static let enrollPhase = "第一步 · 人脸采集"
-    static let verifyPhase = "实时身份核验"
+    static let liveTitle = "请正对屏幕"
     static let confirmPhase = "第二步 · 确认保存"
     static let actionPhase = "动作验证"
     static let tipCenter = "人脸居中"
     static let tipLight = "光线均匀"
     static let tipClear = "面部无遮挡"
-    static let confirmation = "确认后将加密保存人脸特征，不保存照片"
     static let retake = "重新采集"
     static let confirm = "确认录入"
     static let missingTitle = "未能生成预览"
@@ -37,10 +34,8 @@ enum HelloFaceVerifyPresentation {
     static let savingDetail = "即将完成，请稍候"
     static let savingButton = "正在保存…"
     static let actionFallback = "请按提示完成动作"
-    static let stageFallback = "请正对镜头"
     static let cancelCapture = "取消录入"
     static let livenessHeading = "活体检测"
-    static let livenessPhase = "实时活体检测"
     static let countdownSuffix = "秒"
     static let sideInset: CGFloat = 24
     static let headerInset: CGFloat = 8
@@ -59,7 +54,6 @@ enum HelloFaceVerifyPresentation {
     static let phaseHeight: CGFloat = 26
     static let buttonGap: CGFloat = 12
     static let buttonHeight: CGFloat = 50
-    static let confirmationHeight: CGFloat = 36
     static let tipsOffset: CGFloat = 73
     static let tipsHeight: CGFloat = 48
     static let tipsRadius: CGFloat = 18
@@ -75,7 +69,6 @@ enum HelloFaceVerifyPresentation {
     static let dialogPhotoSide: CGFloat = 188
     static let dialogPhotoRadius: CGFloat = 16
     static let dialogGap: CGFloat = 16
-    static let dialogTextGap: CGFloat = 8
     static let dialogHeadingHeight: CGFloat = 32
     static let dialogCloseSize: CGFloat = 32
     static let circleExpansion: CGFloat = 7
@@ -84,11 +77,10 @@ enum HelloFaceVerifyPresentation {
     static let backIconHeight: CGFloat = 16
     static let backIconStroke: CGFloat = 2
     static let fontHeading: CGFloat = 17
-    static let fontTitle: CGFloat = 25
+    static let fontTitle: CGFloat = 21
     static let fontDetail: CGFloat = 13
     static let fontPhase: CGFloat = 12
     static let fontTip: CGFloat = 12
-    static let fontConfirmation: CGFloat = 13
     static let fontButton: CGFloat = 15
     static let fontDialogHeading: CGFloat = 18
     static let fontDialogClose: CGFloat = 24
@@ -107,19 +99,19 @@ enum HelloFaceVerifyPresentation {
             }
         }
         switch stage {
-        case "WAITING_FOR_FACE": return "请正对镜头"
         case "MULTIPLE_FACES": return "请保持画面中只有一人"
         case "FACE_TOO_SMALL": return "请靠近一些"
-        case "FACE_NOT_FRONTAL": return "请正对镜头"
-        case "HOLD_STILL": return "请保持面部稳定"
-        case "FACE_FORWARD": return "请正对镜头"
-        case "FACE_UNSTABLE": return "请保持面部稳定"
-        default: return stageFallback
+        default: return liveTitle
         }
     }
-    static func phase(enrollment: Bool, stage: String = "", step: Int = 0, count: Int = 0) -> String {
+    static func speechGuidance(stage: String, action: String?) -> String? {
+        if stage == "PERFORM_ACTION" { guard let action, ["blink", "openMouth", "shakeHead", "nodHead"].contains(action) else { return nil } }
+        else if !["WAITING_FOR_FACE", "MULTIPLE_FACES", "FACE_TOO_SMALL", "FACE_NOT_FRONTAL", "FACE_FORWARD", "HOLD_STILL"].contains(stage) { return nil }
+        return guidance(stage: stage, action: action)
+    }
+    static func phase(stage: String, step: Int, count: Int) -> String {
         if stage == "PERFORM_ACTION" && count > 0 { return "\(actionPhase) · \(step)/\(count)" }
-        return enrollment ? enrollPhase : verifyPhase
+        return ""
     }
     static func isWarning(stage: String) -> Bool {
         return ["MULTIPLE_FACES", "FACE_TOO_SMALL", "FACE_NOT_FRONTAL"].contains(stage)
