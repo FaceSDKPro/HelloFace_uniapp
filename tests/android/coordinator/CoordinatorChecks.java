@@ -71,17 +71,33 @@ public final class CoordinatorChecks {
             cancel("cancel"); Looper.idle();
             require(NATIVE.getJob() == saving && replies.size() == 1 && replies.get(0).contains("BUSY"), "Cancelled committed save");
             System.out.println("PASS compiled coordinator: enrollment commit cannot be cancelled");
+
+            start("speaking"); activity = NATIVE.getCamera().get();
+            NATIVE.finish("speaking", "sdk-result", true);
+            Looper.idle();
+            require(activity.speechHandoffs == 1 && replies.isEmpty(), "Normal result did not detach speech before teardown");
+            activity.closed.invoke();
+            require(replies.equals(List.of("result:sdk-result")), "Result waited for speech");
+
+            start("cancelled-speech"); activity = NATIVE.getCamera().get();
+            cancel("cancel");
+            NATIVE.finish("cancelled-speech", "late-result", true);
+            Looper.idle();
+            require(activity.speechHandoffs == 0, "Late result kept speech after cancellation won");
+            activity.closed.invoke();
+            System.out.println("PASS compiled coordinator: speech handoff never delays result or beats a winning cancel");
         } finally { NATIVE.setJob(null); NATIVE.getWorker().shutdownNow(); }
     }
 }
 
 final class HelloFaceVerifyCameraActivity {
     private final String id;
-    int shutdowns, finishes;
+    int shutdowns, finishes, speechHandoffs;
     Function0<Unit> closed;
     HelloFaceVerifyCameraActivity(String id) { this.id = id; }
     public String getJobID() { return id; }
     public void shutdownCamera(Function0<Unit> completion) { shutdowns++; closed = completion; }
+    public void finishSpeech() { speechHandoffs++; }
     public void finish() { finishes++; }
 }
 

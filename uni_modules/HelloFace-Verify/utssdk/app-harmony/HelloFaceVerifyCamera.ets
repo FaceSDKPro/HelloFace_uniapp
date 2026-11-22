@@ -355,6 +355,7 @@ export class CameraFlow {
   }
   open(): void {
     try {
+      HelloFaceVerifySpeech.stopFinishingPrompt();
       if (!this.isEnrollment()) this.speech = new HelloFaceVerifySpeech();
       this.mainWindow.on('windowEvent', this.visibility);
       const ui = this.mainWindow.getUIContext();
@@ -555,7 +556,11 @@ export class CameraFlow {
         if (this.ended) { if (this.photo !== undefined) this.releasePreview(this.photo); return; }
         this.onCapture(this.photo, true);
       }).catch((error: Error): void => { this.fail(error); });
-    } else { this.finish(envelope('result', 'OK', '', this.resultData(value))); }
+    } else {
+      const comparisonOnly = this.method === 'verifyFace' && this.params.silentLiveness === false &&
+        (this.params.actions ?? []).length === 0;
+      this.finish(envelope('result', 'OK', '', this.resultData(value)), comparisonOnly);
+    }
   }
   retake(): void {
     if (this.ended || this.committing || this.restarting || this.captured === undefined) return;
@@ -603,11 +608,15 @@ export class CameraFlow {
     return data;
   }
   private fail(error: Error): void { this.finish(errorEnvelope(error)); }
-  private finish(response: string): void {
+  private finish(response: string, keepSpeech: boolean = false): void {
     if (this.ended) return;
     // 先屏蔽旧事件，再释放相机/窗口；释放完成后才能归还原生操作槽。
     this.ended = true; this.generation++; this.accepting = false; this.request?.cancel();
-    this.speech?.close(); this.speech = undefined;
+    let finishPrompt = false;
+    try { finishPrompt = keepSpeech && this.mainWindow.isWindowShowing(); } catch (_) {}
+    if (finishPrompt) this.speech?.finishCurrentPrompt();
+    else this.speech?.close();
+    this.speech = undefined;
     this.restoreScreen();
     this.shutdown().then((): void => { this.completion(response); }, (): void => { this.completion(response); });
   }

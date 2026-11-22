@@ -79,6 +79,7 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
         val pending = HelloFaceVerifyNative.job
         if (pending == null || pending.id != jobID || pending.ending || savedInstanceState != null) { finish(); return }
         current = pending
+        HelloFaceVerifySpeech.stopFinishingPrompt()
         HelloFaceVerifyNative.camera = WeakReference(this)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -161,6 +162,8 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
                 val p = current.params
                 val array = p.getJSONArray("actions")
                 val actions = (0 until array.length()).map { action(array.getString(it)) }
+                val silentLiveness = p.optBoolean("silentLiveness", true)
+                val comparisonOnly = current.method == "verifyFace" && !silentLiveness && actions.isEmpty()
                 val listener = object : FaceFlowListener {
                     override fun onProgress(progress: FaceFlowProgress) { if (active() && generation == attempt) update(progress) }
                     override fun onError(error: HiFaceError) { if (active() && generation == attempt) fail(error.code.name, error.message) }
@@ -174,7 +177,7 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
                                 .put("frameWidth", result.frameWidth)
                                 .put("frameHeight", result.frameHeight)
                         }
-                        finishResult(data)
+                        finishResult(data, comparisonOnly)
                     }
                 }
                 request = if (current.method == "detectLiveness") {
@@ -185,7 +188,7 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
                     instance.liveness().startCameraLiveness(config, listener)
                 } else {
                     val config = FaceVerificationConfig.builder().referenceFeature(current.reference ?: "")
-                        .threshold(p.getDouble("threshold").toFloat()).enableSilentLiveness(p.getBoolean("silentLiveness"))
+                        .threshold(p.getDouble("threshold").toFloat()).enableSilentLiveness(silentLiveness)
                         .actions(actions).actionTimeoutMillis(p.getLong("actionTimeoutMs"))
                         .faceAcquisitionTimeoutMillis(p.getLong("faceTimeoutMs")).allowMultipleFaces(false).build()
                     instance.verification().startCameraVerification(config, listener)
@@ -290,11 +293,16 @@ class HelloFaceVerifyCameraActivity : ComponentActivity() {
             }
         }
     }
-    private fun finishResult(data: JSONObject) {
+    private fun finishResult(data: JSONObject, comparisonOnly: Boolean) {
         if (!active()) return
         stopping = true
-        speech?.setActive(false)
-        HelloFaceVerifyNative.finish(jobID, HelloFaceVerifyNative.envelope(data = data))
+        if (!comparisonOnly) speech?.setActive(false)
+        HelloFaceVerifyNative.finish(jobID, HelloFaceVerifyNative.envelope(data = data), comparisonOnly)
+    }
+    @PublishedApi internal fun finishSpeech() {
+        if (!resumed || isFinishing) return
+        speech?.finishCurrentPrompt()
+        speech = null
     }
     private fun fail(code: String, message: String) {
         if (!active()) return

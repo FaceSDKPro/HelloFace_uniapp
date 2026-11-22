@@ -8,7 +8,7 @@ final class HelloFaceVerifyCameraController: UIViewController {
     private let reference: String?
     private let onProgress: ([String: Any]) -> Void
     private let completion: (String) -> Void
-    private let speech: HelloFaceVerifySpeech?
+    private var speech: HelloFaceVerifySpeech?
     private var pipeline: HelloFaceVerifyCameraPipeline?
     private var preview: AVCaptureVideoPreviewLayer?
     private var request: FaceRequest?
@@ -27,11 +27,15 @@ final class HelloFaceVerifyCameraController: UIViewController {
     private var brightnessApplied = false
     private var cameraVisible = false
     private var isFront: Bool { (params["camera"] as? String ?? "front") == "front" }
+    private var comparisonOnly: Bool {
+        method == "verifyFace" && (params["silentLiveness"] as? Bool) == false && (params["actions"] as? [String] ?? []).isEmpty
+    }
 
     init(method: String, params: [String: Any], reference: String?,
          progress: @escaping ([String: Any]) -> Void, completion: @escaping (String) -> Void) {
         self.method = method; self.params = params; self.reference = reference
         self.onProgress = progress; self.completion = completion
+        HelloFaceVerifySpeech.stopFinishingPrompt()
         self.speech = method == "enrollFace" ? nil : HelloFaceVerifySpeech()
         super.init(nibName: nil, bundle: nil)
     }
@@ -216,7 +220,7 @@ final class HelloFaceVerifyCameraController: UIViewController {
                 }
             }
             if method == "detectLiveness" { data.removeValue(forKey: "similarity") }
-            finish(HelloFaceVerifyOperation.envelope("result", "OK", "", data))
+            finish(HelloFaceVerifyOperation.envelope("result", "OK", "", data), keepSpeech: comparisonOnly)
         }
     }
     private func retake() {
@@ -239,9 +243,12 @@ final class HelloFaceVerifyCameraController: UIViewController {
     }
     @objc func cancel() { if !saving { fail("CANCELLED", "Face operation cancelled") } }
     private func fail(_ code: String, _ message: String) { finish(HelloFaceVerifyOperation.envelope("error", code, message)) }
-    private func finish(_ response: String) {
+    private func finish(_ response: String, keepSpeech: Bool = false) {
         guard lifecycle.finish(response) else { return }
-        speech?.close()
+        if keepSpeech && cameraVisible && UIApplication.shared.applicationState == .active {
+            speech?.finishCurrentPrompt()
+        } else { speech?.close() }
+        speech = nil
         restoreBrightness(); restoreIdleTimer(); screen.clearPhoto()
         captured = nil; request?.cancel(); request = nil
         if let observer = backgroundObserver { NotificationCenter.default.removeObserver(observer) }

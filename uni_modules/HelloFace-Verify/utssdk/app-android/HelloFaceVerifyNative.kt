@@ -27,10 +27,14 @@ object HelloFaceVerifyNative {
         .put("message", message).put("data", data).toString()
 
     @PublishedApi internal fun finish(id: String, response: String) {
-        main.post { finishOnMain(id, response) }
+        finish(id, response, false)
     }
 
-    private fun finishOnMain(id: String, response: String) {
+    @PublishedApi internal fun finish(id: String, response: String, keepSpeech: Boolean) {
+        main.post { finishOnMain(id, response, keepSpeech) }
+    }
+
+    private fun finishOnMain(id: String, response: String, keepSpeech: Boolean = false) {
         val current = job
         if (current?.id != id || current.ending) return
         current.ending = true
@@ -45,7 +49,11 @@ object HelloFaceVerifyNative {
                 finally { current.cancellations.forEach { it(envelope()) } }
             }
         }
-        if (activity == null) complete() else activity.shutdownCamera(complete)
+        if (activity == null) complete() else {
+            // Only the winning terminal result can hand off its already-started prompt.
+            if (keepSpeech) activity.finishSpeech()
+            activity.shutdownCamera(complete)
+        }
     }
 
     @PublishedApi internal fun progress(id: String, data: JSONObject) {

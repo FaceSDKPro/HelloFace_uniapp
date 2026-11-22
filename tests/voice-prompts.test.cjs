@@ -21,7 +21,8 @@ function loadNativeClass(name, imports = {}, globals = {}) {
 
 function fakeSpeech(supported = true) {
   const events = []
-  let resolveEngine, rejectEngine, nextID = 0
+  const timers = new Map()
+  let resolveEngine, rejectEngine, listener, nextID = 0, nextTimer = 0
   const engine = new Promise((resolve, reject) => { resolveEngine = resolve; rejectEngine = reject })
   const Speech = loadNativeClass('HelloFaceVerifySpeech', {
     '@kit.ArkTS': { util: { generateRandomUUID: () => `voice-${++nextID}` } },
@@ -32,12 +33,19 @@ function fakeSpeech(supported = true) {
         return engine
       }
     } }
-  }, { canIUse: () => supported })
+  }, {
+    canIUse: () => supported,
+    setTimeout(callback, delay) { timers.set(++nextTimer, { callback, delay }); return nextTimer },
+    clearTimeout(id) { timers.delete(id) }
+  })
   return {
-    speech: new Speech(), events, reject: rejectEngine,
+    speech: new Speech(), Speech, timers, events, reject: rejectEngine,
+    start(id) { listener.onStart(id) },
+    complete(id, type) { listener.onComplete(id, { type }) },
     ready() {
       resolveEngine({
-        setListener() {},
+        setListener(value) { listener = value },
+        isBusy() { return true },
         speak(text, { requestId, extraParams }) { events.push([text, requestId, extraParams.queueMode]) },
         stop() { events.push('stop') },
         shutdown() { events.push('shutdown') }
@@ -90,10 +98,64 @@ test('frontal and stable stages keep a single spoken prompt', async () => {
 test('Harmony speech shuts down engines that arrive after the camera closes', async () => {
   const { speech, events, ready } = fakeSpeech()
   speech.update('请正对屏幕', 0)
-  speech.close()
+  speech.finishCurrentPrompt()
   ready()
   await setImmediate()
   assert.deepEqual(events, ['init', 'shutdown'])
+})
+
+test('Harmony keeps started audio through completion and releases it when playback ends', async () => {
+  const service = fakeSpeech()
+  const { speech, events, timers } = service
+  service.ready()
+  await setImmediate()
+  speech.update('请正对屏幕', 0)
+  service.start('voice1')
+  speech.finishCurrentPrompt()
+  assert.deepEqual(events, ['init', ['请正对屏幕', 'voice1', 1]])
+  assert.equal([...timers.values()][0].delay, 2000)
+  speech.update('请靠近一些', 0)
+  service.complete('old', 1)
+  service.complete('voice1', 0) // 只完成合成，音频仍在播放。
+  assert.equal(events.length, 2)
+  service.complete('voice1', 1)
+  assert.deepEqual(events.slice(-2), ['stop', 'shutdown'])
+  assert.equal(timers.size, 0)
+})
+
+test('Harmony discards a queued prompt even when an older prompt has started', async () => {
+  const service = fakeSpeech()
+  const { speech, events, timers } = service
+  service.ready()
+  await setImmediate()
+  speech.update('请正对屏幕', 0)
+  service.start('voice1')
+  speech.update('请靠近一些', 0)
+  service.start('voice1')
+  speech.finishCurrentPrompt()
+  service.start('voice2')
+  assert.deepEqual(events.slice(-2), ['stop', 'shutdown'])
+  assert.equal(timers.size, 0)
+})
+
+test('Harmony bounds finishing audio and stops it when another camera opens', async () => {
+  for (const interrupt of [false, true]) {
+    const service = fakeSpeech()
+    const { speech, Speech, events, timers } = service
+    service.ready()
+    await setImmediate()
+    speech.update('请正对屏幕', 0)
+    service.start('voice1')
+    speech.finishCurrentPrompt()
+    const timer = [...timers.values()][0]
+    if (interrupt) {
+      Speech.stopFinishingPrompt()
+      assert.equal(timers.size, 0)
+    }
+    timer.callback()
+    assert.deepEqual(events.slice(2), ['stop', 'shutdown'])
+    assert.equal(timers.size, 0)
+  }
 })
 
 test('Harmony speech tolerates an unavailable offline voice', async () => {

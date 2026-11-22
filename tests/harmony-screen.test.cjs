@@ -7,16 +7,17 @@ const ts = require('typescript')
 const flush = () => new Promise(resolve => setImmediate(resolve))
 
 // Run the actual flow/window cleanup. Only the OS window and camera boundary are replaced.
-function loadFlow(brightness = -1, keepScreenOn = false) {
+function loadFlow(brightness = -1, keepScreenOn = false, method = 'enrollFace', params = {}) {
   const filename = path.resolve(__dirname, '../uni_modules/HelloFace-Verify/utssdk/app-harmony/HelloFaceVerifyCamera.ets')
   const source = fs.readFileSync(filename, 'utf8')
   const compiled = ts.transpileModule(source.slice(source.indexOf('export class CameraFlow')), {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS }
   }).outputText
-  const changes = [], results = [], exports = {}
+  const changes = [], results = [], speech = [], exports = {}
   const prompt = { openCustomDialog: async () => {}, closeCustomDialog: async () => {} }
   const mainWindow = {
     on() {}, off() {},
+    isWindowShowing: () => true,
     getUIContext: () => ({ px2vp: n => n, getPromptAction: () => prompt }),
     getWindowProperties: () => ({ brightness, isKeepScreenOn: keepScreenOn, windowRect: { width: 360, height: 640 } }),
     getWindowAvoidArea: () => Object.fromEntries(['topRect', 'bottomRect', 'leftRect', 'rightRect'].map(k => [k, { width: 0, height: 0 }])),
@@ -24,14 +25,20 @@ function loadFlow(brightness = -1, keepScreenOn = false) {
     async setWindowBrightness(value) { changes.push(['brightness', value]) }
   }
   vm.runInNewContext(compiled, { exports,
+    HelloFaceVerifySpeech: class {
+      static stopFinishingPrompt() {}
+      finishCurrentPrompt() { speech.push('finish') }
+      close() { speech.push('close') }
+    },
+    FaceFlowOutcome: { 0: 'PASSED' },
     window: { WindowEventType: { WINDOW_HIDDEN: 0 }, AvoidAreaType: { TYPE_SYSTEM: 0, TYPE_NAVIGATION_INDICATOR: 1 } },
     ComponentContent: class { dispose() {} }, wrapBuilder: fn => fn, cameraDialog() {},
     Color: { Transparent: 0 }, DialogAlignment: { Center: 0 }, ImmersiveMode: { EXTEND: 0 },
     envelope: (...args) => JSON.stringify(args), errorEnvelope: error => error.message,
     BridgeError: class extends Error {}
   }, { filename })
-  const flow = new exports.CameraFlow({}, mainWindow, { close() {} }, 'enrollFace', {}, undefined, () => {}, result => results.push(result))
-  return { flow, mainWindow, changes, results }
+  const flow = new exports.CameraFlow({}, mainWindow, { close() {} }, method, params, undefined, () => {}, result => results.push(result))
+  return { flow, mainWindow, changes, results, speech }
 }
 
 test('Harmony screen: capture and restore original window brightness, including system-following mode', async () => {
@@ -95,4 +102,20 @@ test('Harmony screen: cancelling before screen setup finishes never applies late
   await flush()
   assert.deepEqual(changes, [['keep', true], ['keep', false]])
   assert.equal(results.length, 1)
+})
+
+test('Harmony camera returns the result while comparison-only speech is finishing', async () => {
+  for (const [method, params, expected] of [
+    ['verifyFace', { silentLiveness: false, actions: [] }, 'finish'],
+    ['verifyFace', { silentLiveness: true, actions: [] }, 'close'],
+    ['verifyFace', { silentLiveness: false, actions: ['blink'] }, 'close'],
+    ['detectLiveness', {}, 'close']
+  ]) {
+    const { flow, results, speech } = loadFlow(-1, false, method, params)
+    flow.open()
+    flow.result({ isPassed: () => true, outcome: 0 })
+    await flush()
+    assert.deepEqual(speech, [expected])
+    assert.equal(JSON.parse(results[0])[3].passed, true)
+  }
 })

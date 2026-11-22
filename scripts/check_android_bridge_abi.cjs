@@ -5,7 +5,7 @@ const required = {
   'Luts/sdk/modules/HelloFaceVerify/HelloFaceVerifyNative;':
     ['getMain', 'getWorker', 'getJob', 'setJob', 'getCamera', 'setCamera', 'envelope', 'finish', 'progress'],
   'Luts/sdk/modules/HelloFaceVerify/HelloFaceVerifyCameraActivity;':
-    ['getJobID', 'setJobID', 'shutdownCamera']
+    ['getJobID', 'setJobID', 'shutdownCamera', 'finishSpeech']
 }
 
 const jsOptions = {
