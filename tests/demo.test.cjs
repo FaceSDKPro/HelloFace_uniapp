@@ -68,7 +68,7 @@ function loadPage(filename, app = true, resultWidth = 418) {
     unload: () => page.onUnload.call(state) }
 }
 
-for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/index.uvue']) {
+for (const file of ['pages/index/index.vue', 'demo-uni-app-x/pages/index/index.uvue']) {
   test(`${file}: the website shortcut opens the local browser page without sharing the input`, () => {
     const { state, routes } = loadPage(file)
     state.faceID = 'private-reference'
@@ -87,7 +87,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     assert.equal(first.src, 'data:image/jpeg;base64,/9j/2Q==')
     assert.deepEqual([first.width, first.height], [90, 120])
     assert.equal(state.resultScrollTarget, 'demo-result')
-    assert.equal(state.resultTitle, '独立活体检测')
+    assert.equal(state.resultText, 'passed: true')
     state.verify()
     assert.equal(state.resultFrames.length, 0)
     assert.equal(state.resultScrollTarget, '')
@@ -119,7 +119,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     state.onResultFrameError(frame.generation)
     assert.equal(state.resultFrames.length, 0)
     assert.equal(state.resultStatus, '活体通过')
-    assert.equal(state.resultText, '活体分数：0.9900')
+    assert.equal(state.resultText, 'passed: true\nlivenessScore: 0.9900')
     state.verify()
     assert.equal(state.resultScrollTarget, '')
     calls[1].options.fail({ code: 103, msg: '已取消', faceID: 'demo-user' })
@@ -224,7 +224,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
       assert.equal(calls.filter(call => call.name !== 'cancel').length, 4)
     }
   })
-  test(`${file}: verification displays the SDK verdict and retains the submitted liveness mode`, () => {
+  test(`${file}: verification displays returned fields without replacing the SDK verdict with a high score`, () => {
     const { state, calls } = loadPage(file)
     state.changeActions({ detail: { value: true } })
     state.verify()
@@ -239,11 +239,11 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     options.complete({})
     assert.equal(state.resultStatus, '活体未通过')
     assert.equal(state.resultStatusTone, 'result-rejected')
-    assert.equal(state.resultText, '相似度：0.9990')
+    assert.equal(state.resultText, 'faceID: demo-user\npassed: false\noutcome: SPOOF_DETECTED\nsimilarity: 0.9990')
     assert.equal(state.busy, false)
-    assert.equal(state.resultMode, '静默 + 动作活体 · 眨眼、点头')
+    const displayed = state.resultText
     state.changeActions({ detail: { value: false } })
-    assert.equal(state.resultMode, '静默 + 动作活体 · 眨眼、点头') // 切换下次选项不改写上次结果的模式。
+    assert.equal(state.resultText, displayed)
     state.verify()
     assert.deepEqual(Array.from(calls[1].options.actions), [])
     assert.equal(calls[1].options.silentLiveness, true)
@@ -264,7 +264,6 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
       assert.equal(calls[0].name, 'verifyFace')
       assert.equal(calls[0].options.silentLiveness, silent)
       assert.deepEqual(Array.from(calls[0].options.actions), actions ? ['blink', 'nodHead'] : [])
-      assert.equal(state.resultMode, mode + (actions ? ' · 眨眼、点头' : ''))
       state.changeSilent({ detail: { value: !silent } })
       state.changeActions({ detail: { value: !actions } })
       state.verify()
@@ -273,11 +272,10 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
       assert.equal(state.actionLiveness, actions)
       calls[0].options.complete({})
       state.syncDemo('图片')
-      assert.equal(state.resultMode, '')
     }
   })
 
-  test(`${file}: standalone liveness needs no faceID, keeps its own action choice and snapshots the submitted mode`, () => {
+  test(`${file}: standalone liveness keeps its own action choice and displays only returned verdict fields`, () => {
     const { state, calls } = loadPage(file)
     state.faceID = ''
     state.changeSilent({ detail: { value: false } })
@@ -295,20 +293,19 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     state.verify()
     assert.equal(state.livenessActions, false)
     assert.equal(calls.length, 1)
-    options.success({ code: 203, msg: '未检测到人脸', faceID: '', passed: false,
+    options.success({ code: 203, msg: '未检测到人脸', faceID: '', passed: false, outcome: 'NO_FACE_TIMEOUT',
       similarity: null, livenessScore: 0.123, feature: null })
     options.complete({})
     assert.equal(state.busy, false)
     assert.equal(state.resultStatus, '未检测到人脸')
     assert.equal(state.resultStatusTone, 'result-rejected')
-    assert.equal(state.resultText, '活体分数：0.1230')
-    assert.equal(state.resultMode, '独立活体 · 仅静默活体')
+    assert.equal(state.resultText, 'passed: false\noutcome: NO_FACE_TIMEOUT\nlivenessScore: 0.1230')
+    const displayed = state.resultText
     state.changeLivenessActions({ detail: { value: true } })
-    assert.equal(state.resultMode, '独立活体 · 仅静默活体')
+    assert.equal(state.resultText, displayed)
     state.detect()
     assert.equal(calls[1].name, 'detectLiveness')
     assert.deepEqual(Array.from(calls[1].options.actions), ['blink', 'nodHead'])
-    assert.equal(state.resultMode, '独立活体 · 静默 + 动作活体 · 眨眼、点头')
     assert.equal(state.actionLiveness, false) // 独立活体选项不改写身份验证的选择。
   })
 
@@ -336,7 +333,6 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
         state[standalone ? 'detect' : 'verify']()
         assert.equal(calls[0].name, standalone ? 'detectLiveness' : 'verifyFace')
         assert.deepEqual(Array.from(calls[0].options.actions), selected)
-        assert.ok(state.resultMode.endsWith(state.actionNames(selected)))
       }
     }
   })
@@ -373,15 +369,12 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     state.changeSelectedActions({ detail: { value: ['nodHead'] } }, true)
     state.verify()
     const submitted = calls[0].options.actions
-    const snapshot = state.resultMode
-    assert.match(snapshot, /张嘴、摇头/)
     state.changeSelectedActions({ detail: { value: ['blink'] } }, false)
     state.changeSelectedActions({ detail: { value: ['blink'] } }, true)
     assert.deepEqual(Array.from(state.verifyActions), ['openMouth', 'shakeHead'])
     assert.deepEqual(Array.from(state.detectActions), ['nodHead'])
     calls[0].options.complete({})
     state.changeSelectedActions({ detail: { value: ['blink'] } }, false)
-    assert.equal(state.resultMode, snapshot)
     assert.deepEqual(Array.from(submitted), ['openMouth', 'shakeHead'])
     state.changeActions({ detail: { value: false } })
     state.verify()
@@ -406,7 +399,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     calls[0].options.complete({})
     assert.equal(state.resultCode, 0)
     assert.equal(state.resultStatus, '录入成功')
-    assert.equal(state.resultText, 'FaceID：demo-user')
+    assert.equal(state.resultText, 'faceID: demo-user\npassed: true\noutcome: PASSED')
     assert.equal(state.resultScrollTarget, 'demo-result')
     assert.ok(!JSON.stringify(state).includes('private-test-feature'))
   })
@@ -443,6 +436,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     calls[0].options.complete({})
     assert.equal(state.resultStatus, '相机未授权')
     assert.equal(state.resultCode, 102)
+    assert.equal(state.resultText, 'faceID: demo-user\nerrCode: 9011002\nsdkCode: PERMISSION_DENIED')
     assert.equal(state.busy, false)
     state.verify()
     unload()
@@ -469,7 +463,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     state.openCameraSettings()
     assert.equal(settings.length, 0)
     state.enroll()
-    calls[0].options.fail({ code: 102, msg: '相机未授权', faceID: 'demo-user' })
+    calls[0].options.fail({ code: 102, msg: '相机未授权', faceID: 'demo-user', errCode: 9011002, sdkCode: 'PERMISSION_DENIED' })
     calls[0].options.complete({})
     assert.equal(settings.length, 0)
     state.openCameraSettings()
@@ -479,6 +473,7 @@ for (const file of ['pages/index/index.vue', 'examples/uni-app-x/pages/index/ind
     authorizeCamera()
     show()
     assert.equal(state.resultStatus, '相机权限已开启，请重试')
+    assert.equal(state.resultText, '')
     assert.equal(state.resultStatusTone, 'result-passed')
     assert.equal(calls.length, 1)
   })

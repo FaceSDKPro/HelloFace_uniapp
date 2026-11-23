@@ -39,7 +39,7 @@ npm run dev:prepare
 
 安装新 SDK 并校验成功后，脚本会把同目录下的旧版 `hiface-版本.aar/har` 备份到 `.sdk-cache/retired-sdk`，使编译只包含锁定版本。`sdk:check` 只读校验。
 
-已从市场下载完整插件的用户可直接用 HBuilderX 准备根目录示例。手动准备 uni-app x 示例时，将根目录的 `uni_modules/HelloFace-Verify`、`app-icons`、`demo`、`static` 和 `harmony-configs` 下的 `entry`、`AppScope` 复制到 `examples/uni-app-x` 的对应位置。签名资料在各自宿主中配置。
+已从市场下载完整插件的用户可直接用 HBuilderX 准备根目录示例。手动准备 uni-app x 示例时，将根目录的 `uni_modules/HelloFace-Verify`、`app-icons`、`demo`、`static` 和 `harmony-configs` 下的 `entry`、`AppScope` 复制到 `demo-uni-app-x` 的对应位置。签名资料在各自宿主中配置。
 
 SDK 更新后要重建原生基座/HAP，不能仅刷新页面。Android 0.8.15 的后端库为 `libhiface_opencv.so`，与 `libhiface_core.so` 一同打包；校验工具从锁定 AAR 读取完整库清单和字节哈希，不再固定检查旧版 ncnn 库名。新基座的两个 ABI、未压缩模型和 16KB 静态对齐均需通过检查。
 
@@ -49,7 +49,7 @@ SDK 更新后要重建原生基座/HAP，不能仅刷新页面。Android 0.8.15 
 | --- | --- | --- |
 | Vue3 | 仓库根目录 | 默认 `manifest.json` 的 `vueVersion: "3"` |
 | Vue2 | 仓库根目录 | 将 `vueVersion` 改为 `"2"`，使用已有 `main.js` 条件编译入口 |
-| uvue | `examples/uni-app-x` | 准备完成后导入，使用其独立 `App.uvue`、`main.uts` 和 `manifest.json` |
+| uvue | `demo-uni-app-x` | 准备完成后导入，使用其独立 `App.uvue`、`main.uts` 和 `manifest.json` |
 
 根目录示例已配置本仓库演示用 AppID，独立 uvue 示例使用占位 AppID。集成到自己的应用时需配置自己的 AppID、包名和签名。插件源码统一在 `uni_modules/HelloFace-Verify` 维护。
 
@@ -79,7 +79,7 @@ npm run android:dev       # Vue 页面修改后自动重新同步
 npm run android:logs -- --follow
 ```
 
-Vue 默认由 App 进程替换页面资源，相同基座会自动跳过安装。`--device 序列号` 可明确选择设备；`--skip-install` 严格核对手机与本机 APK。`--hbuilder` 使用 HBuilderX 自身运行通道。uvue 使用 `--project examples/uni-app-x`，由 HBuilderX 原生编译运行；先配置自身 AppID、执行 `demo:prepare` 并制作对应基座。
+Vue 默认由 App 进程替换页面资源，相同基座会自动跳过安装。`--device 序列号` 可明确选择设备；`--skip-install` 严格核对手机与本机 APK。`--hbuilder` 使用 HBuilderX 自身运行通道。uvue 使用 `--project demo-uni-app-x`，由 HBuilderX 原生编译运行；先配置自身 AppID、执行 `demo:prepare` 并制作对应基座。
 
 这些命令行工具运行前检查 SDK、源码指纹、基座版本、AppID/包名、API/ABI、模型不压缩和 16KB 对齐，并在原生代码或宿主配置改变后要求重建。这是页面同步工具的保守策略；源码日常调试可直接使用 HBuilderX 本地联编，不必每次云打包。运行过程不卸载 App；本机录入数据保留。签名配置、断点操作、资源同步协议、缓存迁移、日志和排错见 [Android 调试与实现](ANDROID_DEBUG.md)。
 

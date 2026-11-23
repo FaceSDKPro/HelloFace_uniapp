@@ -8,7 +8,7 @@ from install_sdk import retire_obsolete
 
 root = Path(__file__).resolve().parents[1]
 generate(root)
-example = root / 'examples' / 'uni-app-x'
+example = root / 'demo-uni-app-x'
 plugin_id = 'HelloFace-Verify'
 destination = example / 'uni_modules' / plugin_id
 # This example directory is generated; remove the former ID to avoid duplicate modules.

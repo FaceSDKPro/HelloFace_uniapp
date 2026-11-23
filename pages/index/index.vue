@@ -66,14 +66,12 @@
       <button class="action" :disabled="busy" @click="syncDemo('图片')">同步演示人脸图片</button>
       <button class="action" :disabled="busy" @click="syncDemo('特征')">同步演示人脸特征</button>
       <button class="action" :disabled="busy" @click="remove">删除人脸信息</button>
-      <view id="demo-result" class="result-card">
+      <view v-if="resultStatus.length > 0 || resultText.length > 0 || resultFrames.length > 0" id="demo-result" class="result-card">
         <view id="demo-result-body" class="result-body">
           <view class="result-copy">
-            <text v-if="resultStatus.length > 0" class="result-status" :class="resultStatusTone">{{ resultStatus }}</text>
-            <text class="result-title">{{ resultTitle.length > 0 ? resultTitle : '调用结果' }}</text>
-            <text v-if="resultMode.length > 0" class="result-mode">{{ resultMode }}</text>
-            <text v-if="resultText.length > 0" :class="resultTitle.length > 0 ? 'recognition-detail' : 'result-text'">{{ resultText }}</text>
-            <text v-if="resultCode > 0 && resultCode != 103" class="result-code">返回码：{{ resultCode }}</text>
+            <text v-if="resultStatus.length > 0" class="result-field">code: {{ resultCode }}</text>
+            <text v-if="resultStatus.length > 0" class="result-status" :class="resultStatusTone">msg: {{ resultStatus }}</text>
+            <text v-if="resultText.length > 0" class="result-field">{{ resultText }}</text>
             <!-- #ifdef APP -->
             <button v-if="resultCode == 102" class="result-settings" :disabled="busy" @click="openCameraSettings">去设置</button>
             <!-- #endif -->
@@ -98,8 +96,8 @@ export default {
       actionOptions: [{ value: 'blink', label: '眨眼' }, { value: 'openMouth', label: '张嘴' },
         { value: 'shakeHead', label: '摇头' }, { value: 'nodHead', label: '点头' }],
       verifyActions: ['blink', 'nodHead'], detectActions: ['blink', 'nodHead'],
-      resultMode: '', resultTitle: '', resultStatus: '', resultCode: -1, resultScrollTarget: '', resultGeneration: 0,
-      resultFrames: [], resultText: '身份验证需先录入或同步基准；独立活体可直接开始。' }
+      resultStatus: '', resultCode: -1, resultScrollTarget: '', resultGeneration: 0,
+      resultFrames: [], resultText: '' }
   },
   computed: {
     resultStatusTone() {
@@ -120,6 +118,7 @@ export default {
     if (this.resultCode == 102 && uni.getAppAuthorizeSetting().cameraAuthorized == 'authorized') {
       this.resultCode = 0
       this.resultStatus = '相机权限已开启，请重试'
+      this.resultText = ''
     }
     // #endif
   },
@@ -142,7 +141,7 @@ export default {
   methods: {
     // 将这三个调用绑定到相应按钮。插件负责相机、权限申请和 SDK 初始化。
     enroll() {
-      if (!this.begin('正在录入人脸…', '相机录入')) return
+      if (!this.begin('正在录入人脸…')) return
       // #ifdef APP
       enrollFace({
         faceID: this.faceID,
@@ -156,8 +155,7 @@ export default {
     verify() {
       const actions = this.actionLiveness ? this.verifyActions.slice() : []
       if (this.busy || (this.actionLiveness && !this.requireAction(actions))) return
-      if (!this.begin('正在验证身份…', '1:1 人脸验证')) return
-      this.resultMode = this.verificationMode + (this.actionLiveness ? ' · ' + this.actionNames(actions) : '')
+      if (!this.begin('正在验证身份…')) return
       // #ifdef APP
       verifyFace({
         faceID: this.faceID,
@@ -173,8 +171,7 @@ export default {
     detect() {
       const actions = this.livenessActions ? this.detectActions.slice() : []
       if (this.busy || (this.livenessActions && !this.requireAction(actions))) return
-      if (!this.begin('正在检测活体…', '独立活体检测')) return
-      this.resultMode = '独立活体 · ' + (this.livenessActions ? '静默 + 动作活体 · ' + this.actionNames(actions) : '仅静默活体')
+      if (!this.begin('正在检测活体…')) return
       // #ifdef APP
       // SDK 的独立活体始终静默；只传可选动作，不传 faceID 或身份基准。
       detectLiveness({
@@ -187,7 +184,7 @@ export default {
     },
     // 同步读取内置演示图片/HF1。已有基准时先确认，再允许覆盖。
     syncDemo(kind) {
-      if (!this.begin('正在同步' + kind + '…', '同步演示' + kind)) return
+      if (!this.begin('正在同步' + kind + '…')) return
       // #ifdef APP
       this.submitDemoSync(kind, this.faceID.trim(), false)
       // #endif
@@ -227,7 +224,7 @@ export default {
     },
     // #endif
     remove() {
-      if (!this.begin('等待删除确认…', '删除人脸信息')) return
+      if (!this.begin('等待删除确认…')) return
       // #ifdef APP
       const faceID = this.faceID.trim()
       this.confirmReferenceChange('删除人脸信息', '确认删除「' + faceID + '」的本机人脸基准？', '确定', () => {
@@ -259,7 +256,7 @@ export default {
     // #endif
     // complete 用于恢复按钮，结果已在 success 或 fail 中展示。
     finish() { this.busy = false },
-    begin(message, title) {
+    begin(message) {
       if (this.busy) return false
       // #ifndef APP
       this.resultText = '请在 App 真机体验：Android、iOS 或鸿蒙。'
@@ -269,8 +266,6 @@ export default {
       // #ifdef APP
       uni.hideKeyboard()
       this.busy = true
-      this.resultMode = ''
-      this.resultTitle = title
       this.resultStatus = ''
       this.resultCode = -1
       this.resultScrollTarget = ''
@@ -344,9 +339,12 @@ export default {
     showResult(result) {
       if (!this.busy) return
       const details = []
-      if (this.resultMode.length == 0 && result.faceID.length > 0) details.push('FaceID：' + result.faceID)
-      if (result.similarity != null) details.push('相似度：' + result.similarity.toFixed(4))
-      if (result.livenessScore != null) details.push('活体分数：' + result.livenessScore.toFixed(4))
+      const faceID = result.faceID ?? ''
+      if (faceID.length > 0) details.push('faceID: ' + faceID)
+      if (result.passed != null) details.push('passed: ' + result.passed)
+      if (result.outcome != null) details.push('outcome: ' + result.outcome)
+      if (result.similarity != null) details.push('similarity: ' + result.similarity.toFixed(4))
+      if (result.livenessScore != null) details.push('livenessScore: ' + result.livenessScore.toFixed(4))
       const jpeg = result.frameJpegBase64
       const width = result.frameWidth ?? 0
       const height = result.frameHeight ?? 0
@@ -360,9 +358,12 @@ export default {
     },
     showError(error) {
       if (!this.busy) return
-      const details = this.resultMode.length == 0 && error.faceID.length > 0 && error.code != 103
-        ? 'FaceID：' + error.faceID : ''
-      this.presentResult(error.code, error.msg, details, true)
+      const details = []
+      const faceID = error.faceID ?? ''
+      if (faceID.length > 0) details.push('faceID: ' + faceID)
+      if (error.errCode != null) details.push('errCode: ' + error.errCode)
+      if (error.sdkCode != null) details.push('sdkCode: ' + error.sdkCode)
+      this.presentResult(error.code, error.msg, details.join('\n'), true)
     },
     presentResult(code, message, details, toast) {
       this.resultCode = code
@@ -410,19 +411,15 @@ export default {
 .mode-title { color: #6865C6; font-size: 14px; font-weight: bold; }
 .mode-detail { color: #7C8190; font-size: 11px; line-height: 17px; margin-top: 5px; }
 .verify-action { height: 45.9px; line-height: 43.9px; margin-bottom: 0; text-align: center; background-color: #E6F2EF; }
-.result-mode { color: #6865C6; font-size: 11px; margin-bottom: 10px; }
 .result-card { display: flex; flex-direction: column; margin: 6px 0 14px; padding: 14px; border: 1px solid #E2E5EA; border-radius: 16px; background-color: #FFFFFF; }
 .result-body { display: flex; flex-direction: row; align-items: center; }
 .result-copy { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.result-status { font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+.result-status { font-size: 13px; line-height: 20px; }
 .result-passed { color: #087D65; }
 .result-rejected { color: #A02D39; }
 .result-cancelled { color: #626775; }
-.result-title { color: #303540; font-size: 16px; font-weight: bold; margin-bottom: 8px; }
-.recognition-detail { color: #626775; font-size: 13px; line-height: 20px; }
+.result-field { color: #626775; font-size: 13px; line-height: 20px; }
 .result-frame { flex-shrink: 0; max-width: 42%; margin-left: 12px; }
-.result-code { color: #626775; font-size: 12px; line-height: 18px; }
 .result-settings { align-self: flex-start; min-height: 44px; line-height: 44px; margin: 8px 0 0; padding: 0 14px; border-radius: 8px; background-color: #E6F2EF; color: #285C5E; font-size: 14px; }
-.result-text { min-height: 120px; padding: 12px; border: 1px solid #E9EBEF; border-radius: 8px; background-color: #F6F7F9; color: #6865C6; font-size: 13px; line-height: 21px; }
 .contact-email { color: #626775; font-size: 12px; line-height: 18px; text-align: center; }
 </style>

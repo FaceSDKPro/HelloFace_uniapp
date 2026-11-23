@@ -1,6 +1,6 @@
 # 鸿蒙真机运行与调试
 
-本工程的规范插件源码在 `uni_modules/HelloFace-Verify`。根目录是 Vue2/Vue3 示例；`examples/uni-app-x` 是独立 uvue 示例。鸿蒙使用 HBuilderX 调用本机 DevEco 工具链，不需要制作 Android 云端基座。
+本工程的规范插件源码在 `uni_modules/HelloFace-Verify`。根目录是 Vue2/Vue3 示例；`demo-uni-app-x` 是独立 uvue 示例。鸿蒙使用 HBuilderX 调用本机 DevEco 工具链，不需要制作 Android 云端基座。
 
 ## 首次准备
 
@@ -29,7 +29,7 @@
 
 本机已于 2026-11-11 完成上述配置：AGC 应用为 **HelloFaceVerify Demo**，Bundle Name 为 `dev.helloface.uniapp.demo`，调试 Profile 为 `HelloFaceVerifyUniappDebug20261111`。沿用已有开发证书和私钥，Profile 包含当前手机。HBuilderX 从本地 `harmony-configs/build-profile.json5` 读取签名配置；该文件已加入 `.gitignore`，仅在本机使用，不能上传或粘贴到日志。证书和 Profile 保存在用户的 `.ohos/config` 中，其他电脑仍需自行配置。DCloud AppID 与 AGC APP ID 各自保留，不能互相替代。
 
-运行 uvue 时先执行 `npm run demo:prepare`，再单独导入 `examples/uni-app-x`，配置其自身有效 AppID 与签名。两个示例目前使用同一鸿蒙 Bundle Name；不要交替覆盖安装来比较结果。需要并存时应由应用所有者配置独立的 Bundle Name 及匹配的签名。
+运行 uvue 时先执行 `npm run demo:prepare`，再单独导入 `demo-uni-app-x`，配置其自身有效 AppID 与签名。两个示例目前使用同一鸿蒙 Bundle Name；不要交替覆盖安装来比较结果。需要并存时应由应用所有者配置独立的 Bundle Name 及匹配的签名。
 
 ## 命令行入口
 

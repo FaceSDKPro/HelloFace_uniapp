@@ -12,7 +12,7 @@
 
 1. 从插件市场导入完整插件和示例，确认 `uni_modules/HelloFace-Verify` 含目标平台 SDK；源码中缺失的 SDK 可按 [开发维护](#开发维护)说明补齐。
 2. 用 HBuilderX 导入根目录，配置自己的 AppID、包名和签名，按 [打包指南](docs/BUILDING.md)运行到真机。默认 Vue3；Vue2 将 `manifest.json` 的 `vueVersion` 改为 `"2"`。
-3. 从源码运行 uni-app x 示例时，先执行 `npm run dev:prepare`，再用 HBuilderX 导入 `examples/uni-app-x` 并配置自己的 AppID、包名和签名。手动准备方式见 [打包指南](docs/BUILDING.md#通用准备)。
+3. 从源码运行 uni-app x 示例时，先执行 `npm run dev:prepare`，再用 HBuilderX 导入 `demo-uni-app-x` 并配置自己的 AppID、包名和签名。手动准备方式见 [打包指南](docs/BUILDING.md#通用准备)。
 
 Android / iOS 可选云端制作基座或完整本地构建，鸿蒙使用本地 DevEco 工具链。运行产物必须包含真实 SDK；Android 模型不压缩配置见 [插件接入说明](uni_modules/HelloFace-Verify/readme.md#接入)。修改 SDK、依赖、权限或资源后需重建。
 **集成到应用后一个CPU架构仅新增10MB左右体积(Android可以配置仅支持ARM64位CPU)**
@@ -31,7 +31,7 @@ Web、小程序不支持此插件。
 
 ## Demo 与接入
 
-在 [uni-app 首页](pages/index/index.vue) 或 [uni-app x 首页](examples/uni-app-x/pages/index/index.uvue) 的 `methods` 开头可以找到三个按钮的插件调用。从 `@/uni_modules/HelloFace-Verify` 导入即可使用，插件会按调用初始化 SDK、申请权限并打开原生相机页。
+在 [uni-app 首页](pages/index/index.vue) 或 [uni-app x 首页](demo-uni-app-x/pages/index/index.uvue) 的 `methods` 开头可以找到三个按钮的插件调用。从 `@/uni_modules/HelloFace-Verify` 导入即可使用，插件会按调用初始化 SDK、申请权限并打开原生相机页。
 
 | 想体验 | 从哪里开始 | 必要参数 |
 | --- | --- | --- |

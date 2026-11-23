@@ -50,7 +50,7 @@ def main():
     args = parser.parse_args()
     project = args.project.resolve()
     if (project / 'App.uvue').exists():
-        raise RuntimeError('uvue 请使用 android:run -- --project examples/uni-app-x，交给 HBuilderX 原生监听。')
+        raise RuntimeError('uvue 请使用 android:run -- --project demo-uni-app-x，交给 HBuilderX 原生监听。')
     adb = adb_path()
     device = select_device(adb, args.device)
     serial = device['serial']

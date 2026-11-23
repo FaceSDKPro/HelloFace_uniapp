@@ -4,7 +4,7 @@
 
 ## 在 HBuilderX 中调试插件功能
 
-1. 打开工程根目录 `HelloFace_uniapp`，这是 Vue 示例；要调试 uvue 则单独打开 `examples/uni-app-x`，先执行 `npm run demo:prepare` 同步插件。两个示例使用各自的 AppID 和基座。
+1. 打开工程根目录 `HelloFace_uniapp`，这是 Vue 示例；要调试 uvue 则单独打开 `demo-uni-app-x`，先执行 `npm run demo:prepare` 同步插件。两个示例使用各自的 AppID 和基座。
 2. 本工程包含第三方人脸 SDK，首次运行或 SDK、依赖、资源、Manifest 改动后需要自定义基座，不能选择标准基座。确认 HBuilderX 登录账号拥有当前 `manifest.json` 的 AppID 权限；执行 `npm run android:base` 自动制作并校验基座，或先执行 `npm run android:prepare`，再从 HBuilderX“运行 → 运行到手机或模拟器 → 制作自定义调试基座”制作。
 3. 手机连接 USB 并授权调试。在 HBuilderX 选择“运行 → 运行到手机或模拟器 → 运行到 Android App 基座”，选择已连接的目标设备并勾选“使用自定义基座运行”。已有最新版基座时可选“已安装的基座”，包名为 `dev.helloface.uniapp.demo`；使用本地基座时文件为根工程 `unpackage/debug/android_debug.apk`。
 4. 运行成功后，在底部运行控制台点击红色虫子图标，选择“调试”；如需调试 App 初始化，开启后再点击旁边的“重启应用”。双击代码行号添加断点，然后在手机点击录入/验证按钮触发。
@@ -52,7 +52,7 @@ npm run android:logs -- --follow         # 持续跟踪，App 重启后自动跟
 ```sh
 npm run android:run -- --sync-resources   # 与 Vue 默认同步通道相同
 npm run android:run -- --hbuilder         # 使用 HBuilderX 自身运行/监听通道
-npm run android:run -- --project examples/uni-app-x  # uvue，由 HBuilderX 编译运行
+npm run android:run -- --project demo-uni-app-x  # uvue，由 HBuilderX 编译运行
 ```
 
 uvue 先配置有效 AppID、执行 `npm run demo:prepare` 并制作自身基座，不能直接使用根目录 Vue 基座。
