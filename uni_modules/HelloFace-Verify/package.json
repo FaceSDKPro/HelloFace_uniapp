@@ -10,7 +10,7 @@
     "人脸比对",
     "离线人脸识别",
     "鸿蒙人脸识别"
-  ],
+],
   "repository": "https://github.com/FaceSDKPro/HelloFace_uniapp",
   "engines": {
     "HBuilderX": "^5.34",
@@ -49,26 +49,26 @@
         "uni-app": {
           "vue": {
             "vue2": {
-              "extVersion": "0.4.0",
+              "extVersion": "0.3.0",
               "minVersion": ""
             },
             "vue3": {
-              "extVersion": "0.4.0",
+              "extVersion": "0.3.0",
               "minVersion": ""
             }
           },
           "app": {
             "android": {
               "minVersion": "23",
-              "extVersion": "0.4.0"
+              "extVersion": "0.3.0"
             },
             "ios": {
               "minVersion": "15",
-              "extVersion": "0.4.0"
+              "extVersion": "0.3.0"
             },
             "harmony": {
               "minVersion": "20",
-              "extVersion": "0.4.0"
+              "extVersion": "0.3.0"
             },
             "nvue": "-",
             "vue": "-"
@@ -98,15 +98,15 @@
           "app": {
             "android": {
               "minVersion": "23",
-              "extVersion": "0.4.0"
+              "extVersion": "0.3.0"
             },
             "ios": {
               "minVersion": "15",
-              "extVersion": "0.4.0"
+              "extVersion": "0.3.0"
             },
             "harmony": {
               "minVersion": "20",
-              "extVersion": "0.4.0"
+              "extVersion": "0.3.0"
             }
           },
           "web": {
