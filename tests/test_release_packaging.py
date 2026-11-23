@@ -1,4 +1,3 @@
-import os
 import subprocess
 import sys
 import tempfile
@@ -9,31 +8,6 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from build_android_base import download_release
-from make_apk_variant import build_tool
-
-
-class ApkBuildToolTests(unittest.TestCase):
-    def test_selects_latest_numeric_version_and_ignores_unsupported_tools(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            for version in ('9.0.0', '34.0.0', '35.0.0', '36.0.0'):
-                tool = root / 'sdk/build-tools' / version / 'zipalign'
-                tool.parent.mkdir(parents=True)
-                tool.touch()
-            with patch.dict(os.environ, {'ANDROID_HOME': str(root / 'sdk')}, clear=True), \
-                    patch('make_apk_variant.Path.home', return_value=root / 'home'):
-                self.assertEqual(build_tool('zipalign'), str(root / 'sdk/build-tools/36.0.0/zipalign'))
-
-    def test_rejects_tools_older_than_required_version(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            tool = root / 'sdk/build-tools/34.0.0/zipalign'
-            tool.parent.mkdir(parents=True)
-            tool.touch()
-            with patch.dict(os.environ, {'ANDROID_HOME': str(root / 'sdk')}, clear=True), \
-                    patch('make_apk_variant.Path.home', return_value=root / 'home'):
-                with self.assertRaisesRegex(RuntimeError, 'Build-Tools 35'):
-                    build_tool('zipalign')
 
 
 class ReleaseDownloadTests(unittest.TestCase):

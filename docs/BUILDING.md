@@ -19,7 +19,7 @@
 ## 区分调试基座、插件检查和正式安装包
 
 - **自定义调试基座**：用于真机调试，包含原生 SDK、UTS 插件、权限和相关资源。选择云端制作基座是一种操作路径；源码版也可通过本地原生工程集成和构建。
-- **插件检查**：`npm run check` 校验 API、SDK 文件并将 UTS 转成三端代码。原生模块编译记录见 `VALIDATION.md`；这些检查都不等同于完整 App 打包成功。
+- **插件检查**：`npm run check` 校验 API、SDK 文件并将 UTS 转成三端代码；完整 App 仍需实际构建、链接和签名。
 - **正式安装包**：需要实际构建、链接和签名，产物例如 Android APK/AAB、iOS IPA、鸿蒙 APP/HAP。
 
 本插件包含 AAR、xcframework、HAR、相机权限和原生源码。调试或正式构建的宿主必须包含这些内容。修改原生依赖、权限、资源或模型打包选项后，要重新构建相应原生产物。
@@ -153,17 +153,17 @@ HBuilderX 官方鸿蒙流程在本机调用 DevEco 工具链完成构建，不�
 3. 确认插件 `utssdk/app-harmony/libs/hiface-0.8.15.har` 已安装，`config.json` 能解析该依赖；相机权限及原因字符串由插件 `module.json5` 和 `resources` 提供。
 4. 在 HBuilderX 中选择鸿蒙真机运行；正式打包使用“发行 → App-Harmony-本地打包 → 生成安装包”，完成本地编译和签名。
 
-历史 SDK 0.8.11 已完成根 Vue3 示例的完整 HAP 构建、签名、安装及鸿蒙 API 26 真机运行；0.8.14 的历史验证完成了完整未签名 Release APP 构建，尚未真机回归。本机匹配的调试签名配置在被 Git 忽略的 `harmony-configs/build-profile.json5`，其他电脑需配置自己的身份及匹配 Profile。独立 uni-app x 完整 App、HarmonyOS 6 实机及真人用例的验收边界见 [验证记录](VALIDATION.md)。两套示例的最低鸿蒙版本均固定为 `6.0.0(20)`，以满足真实 HAR 的 API 20 要求。
+本机匹配的调试签名配置在被 Git 忽略的 `harmony-configs/build-profile.json5`，其他电脑需配置自己的身份及匹配 Profile。两套示例的最低鸿蒙版本均固定为 `6.0.0(20)`，以满足真实 HAR 的 API 20 要求。完整 App 和真人用例需在目标设备上验收。
 
 本工程的设备连接、签名匹配、CLI 运行、断点、日志和修改后重建步骤见 [鸿蒙真机运行与调试](HARMONY_DEBUG.md)。
 
-## 市场示例包体积
+## 示例资源与图标
 
-根目录 `.npmignore` 按 [DCloud 发布忽略规则](https://uniapp.dcloud.net.cn/plugin/uni_modules#npmignore) 排除构建缓存、签名文件、生成的 uvue 副本及图标原始画稿/提示词；它接替 `.gitignore` 参与示例打包，因此维护时应同步保留私密文件的排除项。仓库仍保留这些素材，示例保留全部运行图标、源码、文档与 SDK 安装脚本。示例源码 ZIP 的大小不代表完整 App 或 SDK 插件包的大小。
+根目录 `.npmignore` 按 [DCloud 发布忽略规则](https://uniapp.dcloud.net.cn/plugin/uni_modules#npmignore) 排除构建缓存、签名文件和生成的 uvue 副本；它接替 `.gitignore` 参与示例打包，因此维护时应同步保留私密文件的排除项。源码不携带 SDK 二进制，下载后按[通用准备](#通用准备)补齐；独立发布完整插件时须包含真实 SDK 及其资源。
 
-图标已无损压缩，尺寸、透明度、像素及色彩元数据保持不变。以后更新图标时执行 `npm run icons:build`、`npm run icons:optimize`、`npm run demo:prepare`；可选压缩工具的环境说明见 [图标说明](../app-icons/README.md)。正常导入和构建示例不需要安装该工具。示例包不携带本机安装的 SDK 二进制，下载后按[通用准备](#通用准备)操作。独立发布的插件包须包含真实 SDK 及其资源。
+两套示例共用 `app-icons/HiFaceUni.png` 图标母版。更新母版后，在 macOS 执行 `npm run icons:build`、`npm run icons:optimize`、`npm run demo:prepare`。可选的无损压缩命令需要 Pillow（`python3 -m pip install Pillow`）；正常导入和打包直接使用已提交的图标。图标变化后需重建对应平台安装包。
 
-APK / IPA / HAP 的发行压缩、混淆、原生库裁剪及实测边界见 [Demo 安装包体积](APP_SIZE.md)，不能用源码 ZIP 大小推算安装包。根 Vue 可用 `npm run android:release` 制作正式 APK；鸿蒙通过公开的 `harmony-configs` Release 配置优化，iOS 本地宿主配置见对应章节。
+根 Vue 可用 `npm run android:release` 制作正式 APK；鸿蒙通过公开的 `harmony-configs` Release 配置优化，iOS 本地宿主配置见对应章节。
 
 ## 发布前验证
 
@@ -173,7 +173,7 @@ npm run dev:check
 
 这条命令先准备示例，再检查三端 UI 与 SDK、运行自动测试并转换 UTS。三端 SDK 已就绪时，可以执行只检查的 `npm run check`。只验证单端 SDK 时，可执行 `npm run sdk:check -- --platform android` 等对应命令。
 
-随后按所选平台实际构建安装包、安装到真机，验证录入、本人/他人识别、活体拒绝、权限拒绝、取消、后台释放和特征保存。已有结果及待验项见 [验证记录](VALIDATION.md)。
+随后按所选平台实际构建安装包、安装到真机，验证录入、本人/他人识别、活体拒绝、权限拒绝、取消、后台释放和特征保存。
 
 ## 新增接口后的联编
 

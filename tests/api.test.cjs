@@ -4,11 +4,7 @@ const path = require('node:path')
 const vm = require('node:vm')
 const { test } = require('node:test')
 
-let ts
-try { ts = require('typescript') } catch (_) {
-  ts = require(path.join(process.env.HBUILDERX_PATH || '/Applications/HBuilderX.app/Contents/HBuilderX',
-    'plugins/uniapp-uts-v1/node_modules/@dcloudio/uni-uts-v1/lib/typescript'))
-}
+const ts = require('./helpers/typescript.cjs')
 const sdkRoot = path.resolve(__dirname, '../uni_modules/HelloFace-Verify/utssdk')
 function jsonObject(data) {
   const methods = {

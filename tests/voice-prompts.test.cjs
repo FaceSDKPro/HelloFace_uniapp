@@ -4,7 +4,7 @@ const path = require('node:path')
 const vm = require('node:vm')
 const { test } = require('node:test')
 const { setImmediate } = require('node:timers/promises')
-const ts = require('typescript')
+const ts = require('./helpers/typescript.cjs')
 
 const directory = path.resolve(__dirname, '../uni_modules/HelloFace-Verify/utssdk/app-harmony')
 

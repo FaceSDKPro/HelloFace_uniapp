@@ -1,5 +1,6 @@
 .DS_Store
 .hbuilderx/
+.hvigor/
 unpackage/
 node_modules/
 .sdk-cache/

@@ -25,6 +25,5 @@ __pycache__/
 **/__pycache__/**
 **/*.pyc
 
-# 图标编辑素材仅在仓库保留；示例保留全部运行所需图标和维护脚本。
-/app-icons/source-original.png
-/app-icons/generation-prompt.txt
+# 仓库维护约定不进入市场示例包。
+/AGENTS.md

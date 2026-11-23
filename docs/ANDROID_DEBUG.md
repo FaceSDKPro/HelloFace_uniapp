@@ -132,4 +132,4 @@ npm run android:run -- --hbuilder --skip-install --device 设备序列号
 | 手机拒绝安装 | 开启 USB 安装并允许本次安装；脚本不重复触发安装 |
 | 包名相同但签名不同 | 使用此前的调试证书重建 |
 
-Android 16KB 的静态检查与真实 16KB 环境运行是不同的验证项，设备实测范围见 [验证记录](VALIDATION.md)。
+Android 16KB 静态检查通过后，还需在内存页大小为 16KB 的设备或模拟器上运行验收。

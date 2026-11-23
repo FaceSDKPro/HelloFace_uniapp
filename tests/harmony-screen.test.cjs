@@ -3,7 +3,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const vm = require('node:vm')
 const { test } = require('node:test')
-const ts = require('typescript')
+const ts = require('./helpers/typescript.cjs')
 const flush = () => new Promise(resolve => setImmediate(resolve))
 
 // Run the actual flow/window cleanup. Only the OS window and camera boundary are replaced.

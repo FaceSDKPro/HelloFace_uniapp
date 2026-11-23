@@ -27,7 +27,7 @@ Android / iOS 可选云端制作基座或完整本地构建，鸿蒙使用本地
 | iOS | iOS 15+；本地构建需兼容 Swift 6.1.2 的 Xcode（16.3+） |
 | HarmonyOS | API 20+，ARM64，DevEco Studio 26 |
 
-Web、小程序不支持此插件。各平台实际编译与真机结果见 [验证记录](docs/VALIDATION.md)。
+Web、小程序不支持此插件。
 
 ## Demo 与接入
 
@@ -52,7 +52,7 @@ npm run dev:prepare  # 补齐锁定 SDK、生成三端 UI 配置、同步 uni-ap
 npm run dev:check    # 提交前执行，包含准备、自动测试和三端 UTS 转换
 ```
 
-只检查现有工作区时执行 `npm run check`。改动原生桥接、SDK、权限或资源后，按目标平台重新构建并在真机验收。[代码结构](docs/CODE_STRUCTURE.md) · [打包与单端检查](docs/BUILDING.md)
+只检查现有工作区时执行 `npm run check`。改动原生桥接、SDK、权限或资源后，按目标平台重新构建并在真机验收。更多命令见 [打包与单端检查](docs/BUILDING.md)。
 
 ## 体验与联系
 

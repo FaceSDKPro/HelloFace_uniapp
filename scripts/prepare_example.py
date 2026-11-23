@@ -8,19 +8,20 @@ from install_sdk import retire_obsolete
 
 root = Path(__file__).resolve().parents[1]
 generate(root)
+example = root / 'examples' / 'uni-app-x'
 plugin_id = 'HelloFace-Verify'
-destination = root / 'examples' / 'uni-app-x' / 'uni_modules' / plugin_id
+destination = example / 'uni_modules' / plugin_id
 # This example directory is generated; remove the former ID to avoid duplicate modules.
 legacy = destination.parent / 'HelloFaceVerify'
 if legacy.is_dir():
     shutil.rmtree(legacy)
 shutil.copytree(root / 'uni_modules' / plugin_id, destination, dirs_exist_ok=True)
 # 增量复制不会删除旧 AAR/HAR；按锁定清单移出，避免升级后同时联编两个 SDK。
-retire_obsolete(json.loads((root / 'sdk-artifacts.json').read_text())['artifacts'], destination.parent.parent)
-shutil.copytree(root / 'app-icons', destination.parent.parent / 'app-icons', dirs_exist_ok=True)
-shutil.copytree(root / 'demo', destination.parent.parent / 'demo', dirs_exist_ok=True)
-shutil.copytree(root / 'static', destination.parent.parent / 'static', dirs_exist_ok=True)
-# 仅同步公开的模块发行配置；根目录的签名资料继续由应用所有者单独配置。
-shutil.copytree(root / 'harmony-configs' / 'entry', destination.parent.parent / 'harmony-configs' / 'entry', dirs_exist_ok=True)
-shutil.copytree(root / 'harmony-configs' / 'AppScope', destination.parent.parent / 'harmony-configs' / 'AppScope', dirs_exist_ok=True)
-print('Prepared ' + str(destination.parent.parent))
+retire_obsolete(json.loads((root / 'sdk-artifacts.json').read_text())['artifacts'], example)
+# 这些目录完全由规范资源生成，替换副本以清掉已删除文件；签名配置由宿主单独维护。
+for relative in ('app-icons', 'demo', 'static', 'harmony-configs/entry', 'harmony-configs/AppScope'):
+    target = example / relative
+    if target.is_dir():
+        shutil.rmtree(target)
+    shutil.copytree(root / relative, target)
+print('Prepared ' + str(example))

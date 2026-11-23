@@ -3,7 +3,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const vm = require('node:vm')
 const { test } = require('node:test')
-const ts = require('typescript')
+const ts = require('./helpers/typescript.cjs')
 
 function loadProgress(enrollment = true, timeoutMs = 3000) {
   const filename = path.resolve(__dirname, '../uni_modules/HelloFace-Verify/utssdk/app-harmony/HelloFaceVerifyCamera.ets')
