@@ -39,7 +39,7 @@ npm run dev:prepare
 
 安装新 SDK 并校验成功后，脚本会把同目录下的旧版 `hiface-版本.aar/har` 备份到 `.sdk-cache/retired-sdk`，使编译只包含锁定版本。`sdk:check` 只读校验。
 
-已从市场下载完整插件的用户可直接用 HBuilderX 准备根目录示例。手动准备 uni-app x 示例时，将根目录的 `uni_modules/HelloFace-Verify`、`app-icons`、`demo`、`static` 和 `harmony-configs` 下的 `entry`、`AppScope` 复制到 `demo-uni-app-x` 的对应位置。签名资料在各自宿主中配置。
+市场完整示例已包含两套 Demo 的插件、SDK 和运行资源，分别用 HBuilderX 打开根目录或 `demo-uni-app-x` 即可，无需执行 SDK 下载或示例同步命令。源码版手动准备 uni-app x 示例时，将根目录的 `uni_modules/HelloFace-Verify`、`app-icons`、`demo`、`static` 和 `harmony-configs` 下的 `entry`、`AppScope` 复制到 `demo-uni-app-x` 的对应位置。签名资料在各自宿主中配置。
 
 SDK 更新后要重建原生基座/HAP，不能仅刷新页面。Android 0.8.15 的后端库为 `libhiface_opencv.so`，与 `libhiface_core.so` 一同打包；校验工具从锁定 AAR 读取完整库清单和字节哈希，不再固定检查旧版 ncnn 库名。新基座的两个 ABI、未压缩模型和 16KB 静态对齐均需通过检查。
 
@@ -159,7 +159,7 @@ HBuilderX 官方鸿蒙流程在本机调用 DevEco 工具链完成构建，不�
 
 ## 示例资源与图标
 
-根目录 `.npmignore` 按 [DCloud 发布忽略规则](https://uniapp.dcloud.net.cn/plugin/uni_modules#npmignore) 排除构建缓存、签名文件和生成的 uvue 副本；它接替 `.gitignore` 参与示例打包，因此维护时应同步保留私密文件的排除项。源码不携带 SDK 二进制，下载后按[通用准备](#通用准备)补齐；独立发布完整插件时须包含真实 SDK 及其资源。
+根目录 `.npmignore` 按 [DCloud 发布忽略规则](https://uniapp.dcloud.net.cn/plugin/uni_modules#npmignore) 排除旧 SDK 备份、构建缓存和签名文件；它接替 `.gitignore` 参与示例打包，因此维护时应同步保留私密文件的排除项。市场完整示例包含 Vue2/Vue3 与 uvue 两套 Demo 各自的插件、当前三端原生 SDK 和运行资源，下载后无需另外补齐或同步 SDK。发布前执行 `npm run dev:prepare` 准备两套内容；GitHub 克隆的源码不携带 SDK 二进制，也按[通用准备](#通用准备)安装依赖。
 
 两套示例共用 `app-icons/HiFaceUni.png` 图标母版。更新母版后，在 macOS 执行 `npm run icons:build`、`npm run icons:optimize`、`npm run demo:prepare`。可选的无损压缩命令需要 Pillow（`python3 -m pip install Pillow`）；正常导入和打包直接使用已提交的图标。图标变化后需重建对应平台安装包。
 

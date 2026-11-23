@@ -10,11 +10,11 @@
 
 ## 运行示例
 
-根目录是 uni-app Vue2/Vue3 Demo，`demo-uni-app-x` 是独立 uvue Demo。插件源码统一维护在根目录 `uni_modules/HelloFace-Verify`；`npm run demo:prepare` 会刷新 uvue 的插件和资源副本，并清理副本中过期的文件。
+根目录是 uni-app Vue2/Vue3 Demo，`demo-uni-app-x` 是独立 uvue Demo。市场示例包已包含两套 Demo 的插件、当前三端 SDK 和运行资源，下载后无需执行 SDK 补齐或示例同步命令。源码开发时统一维护根目录 `uni_modules/HelloFace-Verify`，再用 `npm run demo:prepare` 刷新 uvue 的插件和资源副本。
 
-1. 从插件市场导入完整插件和示例，确认 `uni_modules/HelloFace-Verify` 含目标平台 SDK；源码中缺失的 SDK 可按 [开发维护](#开发维护)说明补齐。
+1. 从插件市场下载完整示例，两套 Demo 均已内置当前 Android、iOS、鸿蒙原生 SDK。GitHub 克隆的源码按[开发维护](#开发维护)说明准备依赖。
 2. 用 HBuilderX 导入根目录，配置自己的 AppID、包名和签名，按 [打包指南](docs/BUILDING.md)运行到真机。默认 Vue3；Vue2 将 `manifest.json` 的 `vueVersion` 改为 `"2"`。
-3. 从源码运行 uni-app x 示例时，先执行 `npm run dev:prepare`，再用 HBuilderX 导入 `demo-uni-app-x` 并配置自己的 AppID、包名和签名。手动准备方式见 [打包指南](docs/BUILDING.md#通用准备)。
+3. 运行 uni-app x 示例时，用 HBuilderX 导入 `demo-uni-app-x` 并配置自己的 AppID、包名和签名。GitHub 克隆的源码先执行 `npm run dev:prepare`；其他准备方式见 [打包指南](docs/BUILDING.md#通用准备)。
 
 Android / iOS 可选云端制作基座或完整本地构建，鸿蒙使用本地 DevEco 工具链。运行产物必须包含真实 SDK；Android 模型不压缩配置见 [插件接入说明](uni_modules/HelloFace-Verify/readme.md#接入)。修改 SDK、依赖、权限或资源后需重建。
 **集成到应用后一个CPU架构仅新增10MB左右体积(Android可以配置仅支持ARM64位CPU)**

@@ -12,21 +12,13 @@ node_modules/
 *.mobileprovision
 local.properties
 /harmony-configs/build-profile.json5
-uni_modules/HelloFace-Verify/utssdk/app-android/libs/*.aar
-uni_modules/HelloFace-Verify/utssdk/app-ios/Frameworks/*.xcframework/
-uni_modules/HelloFace-Verify/utssdk/app-harmony/libs/*.har
+# 两套 Demo 均内置当前 SDK 和运行资源，旧 SDK 备份由准备脚本移入缓存。
 # HBuilderX 打包时需显式排除独立示例中的缓存，避免带入旧 SDK 备份。
 demo-uni-app-x/.sdk-cache/
 demo-uni-app-x/.hbuilderx/
 demo-uni-app-x/.hvigor/
 demo-uni-app-x/node_modules/
 demo-uni-app-x/unpackage/
-demo-uni-app-x/uni_modules/
-demo-uni-app-x/app-icons/
-demo-uni-app-x/demo/
-demo-uni-app-x/static/
-demo-uni-app-x/harmony-configs/entry/
-demo-uni-app-x/harmony-configs/AppScope/
 /demo-uni-app-x/harmony-configs/build-profile.json5
 __pycache__/
 **/__pycache__/**
