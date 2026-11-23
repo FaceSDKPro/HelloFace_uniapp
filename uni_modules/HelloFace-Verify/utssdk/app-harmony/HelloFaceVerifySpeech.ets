@@ -1,4 +1,5 @@
 import { util } from '@kit.ArkTS';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import { textToSpeech } from '@kit.CoreSpeechKit';
 
 const REPLACE_PROMPT: Record<string, Object> = { 'queueMode': 1 };
@@ -17,12 +18,13 @@ export class HelloFaceVerifySpeech {
   static stopFinishingPrompt(): void { HelloFaceVerifySpeech.finishingPrompt?.close(); }
 
   constructor() {
+    HelloFaceVerifySpeech.stopFinishingPrompt();
     if (canIUse('SystemCapability.AI.TextToSpeech')) this.initialize();
     else this.closed = true;
   }
 
   update(text: string | undefined, actionStep: number): void {
-    if (this.closed || HelloFaceVerifySpeech.finishingPrompt === this || text === undefined ||
+    if (this.closed || HelloFaceVerifySpeech.finishingPrompt === this || text === undefined || text.length === 0 ||
       (this.text === text && this.actionStep === actionStep)) return;
     this.text = text;
     this.actionStep = actionStep;
@@ -33,12 +35,9 @@ export class HelloFaceVerifySpeech {
     if (HelloFaceVerifySpeech.finishingPrompt === this) HelloFaceVerifySpeech.finishingPrompt = undefined;
     if (this.finishTimer >= 0) { clearTimeout(this.finishTimer); this.finishTimer = -1; }
     this.closed = true;
-    this.text = undefined;
-    this.requestID = undefined;
-    this.started = false;
+    this.stopPrompt();
     const engine = this.engine;
     this.engine = undefined;
-    try { engine?.stop(); } catch (_) {}
     try { engine?.shutdown(); } catch (_) {}
   }
 
@@ -59,7 +58,7 @@ export class HelloFaceVerifySpeech {
     try {
       const engine = await textToSpeech.createEngine({ language: 'zh-CN', person: 13, online: 1 });
       // The camera can close while the system voice is loading.
-      if (this.closed) { engine.shutdown(); return; }
+      if (this.closed) { try { engine.shutdown(); } catch (_) {} return; }
       this.engine = engine;
       engine.setListener({
         onStart: (id: string): void => { if (id === this.requestID) this.started = true; },
@@ -68,10 +67,16 @@ export class HelloFaceVerifySpeech {
           if (response.type === 1) this.utteranceEnded(id);
         },
         onStop: (id: string): void => { this.utteranceEnded(id); },
-        onError: (id: string): void => { this.utteranceEnded(id); }
+        onError: (id: string, code: number): void => {
+          hilog.warn(0x0000, 'HelloFaceVerify', 'TTS playback error: %{public}d', code);
+          this.utteranceEnded(id);
+        }
       });
       this.speakLatest();
-    } catch (_) { this.close(); }
+    } catch (_) {
+      if (!this.closed) hilog.warn(0x0000, 'HelloFaceVerify', 'Offline Chinese TTS unavailable');
+      this.close();
+    }
   }
 
   private speakLatest(): void {
@@ -81,7 +86,17 @@ export class HelloFaceVerifySpeech {
       this.requestID = requestId;
       this.started = false;
       this.engine.speak(this.text, { requestId: requestId, extraParams: REPLACE_PROMPT });
-    } catch (_) { this.close(); }
+    } catch (_) {
+      this.stopPrompt();
+      hilog.warn(0x0000, 'HelloFaceVerify', 'TTS prompt could not be queued');
+    }
+  }
+
+  private stopPrompt(): void {
+    this.text = undefined;
+    this.requestID = undefined;
+    this.started = false;
+    try { this.engine?.stop(); } catch (_) {}
   }
 
   private utteranceEnded(id: string): void {

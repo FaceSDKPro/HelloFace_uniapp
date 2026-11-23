@@ -80,8 +80,11 @@ async function main() {
   try {
     const classpath = [boundary, ...runtimeClasspath].join(path.delimiter)
     execFileSync(executable('javac'), ['-d', boundary, path.join(root, 'tests/android/ReferenceKeyChecks.java'),
-      path.join(root, 'tests/android/boundary/android/util/Base64.java')], { stdio: 'inherit' })
+      path.join(root, 'tests/android/boundary/android/util/Base64.java'),
+      path.join(root, 'tests/android/SpeechVoiceChecks.java'),
+      path.join(root, 'tests/android/boundary/android/speech/tts/Voice.java')], { stdio: 'inherit' })
     execFileSync(executable('java'), ['-cp', classpath, 'ReferenceKeyChecks'], { stdio: 'inherit' })
+    execFileSync(executable('java'), ['-cp', classpath, 'SpeechVoiceChecks'], { stdio: 'inherit' })
   } finally { fs.rmSync(boundary, { recursive: true, force: true }) }
   const jsonRoot = path.join(process.env.GRADLE_USER_HOME || path.join(os.homedir(), '.gradle'), 'caches/modules-2/files-2.1/org.json/json')
   const jsonJars = exists(jsonRoot) ? fs.readdirSync(jsonRoot, { recursive: true })

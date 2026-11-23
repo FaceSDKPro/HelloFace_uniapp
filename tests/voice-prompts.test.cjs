@@ -21,11 +21,14 @@ function loadNativeClass(name, imports = {}, globals = {}) {
 
 function fakeSpeech(supported = true) {
   const events = []
+  const warnings = []
   const timers = new Map()
   let resolveEngine, rejectEngine, listener, nextID = 0, nextTimer = 0
+  let failNextSpeak = false
   const engine = new Promise((resolve, reject) => { resolveEngine = resolve; rejectEngine = reject })
   const Speech = loadNativeClass('HelloFaceVerifySpeech', {
     '@kit.ArkTS': { util: { generateRandomUUID: () => `voice-${++nextID}` } },
+    '@kit.PerformanceAnalysisKit': { hilog: { warn: (...args) => warnings.push(args) } },
     '@kit.CoreSpeechKit': { textToSpeech: {
       createEngine({ language, person, online }) {
         assert.deepEqual([language, person, online], ['zh-CN', 13, 1])
@@ -39,14 +42,18 @@ function fakeSpeech(supported = true) {
     clearTimeout(id) { timers.delete(id) }
   })
   return {
-    speech: new Speech(), Speech, timers, events, reject: rejectEngine,
+    speech: new Speech(), Speech, timers, events, warnings, reject: rejectEngine,
+    failNextSpeak() { failNextSpeak = true },
     start(id) { listener.onStart(id) },
     complete(id, type) { listener.onComplete(id, { type }) },
     ready() {
       resolveEngine({
         setListener(value) { listener = value },
         isBusy() { return true },
-        speak(text, { requestId, extraParams }) { events.push([text, requestId, extraParams.queueMode]) },
+        speak(text, { requestId, extraParams }) {
+          if (failNextSpeak) { failNextSpeak = false; throw new Error('Queue unavailable') }
+          events.push([text, requestId, extraParams.queueMode])
+        },
         stop() { events.push('stop') },
         shutdown() { events.push('shutdown') }
       })
@@ -78,6 +85,7 @@ test('Harmony speech keeps the latest prompt, deduplicates repeats and supports 
   await setImmediate()
   speech.update('请眨眨眼', 1)
   speech.update(undefined, 0)
+  speech.update('', 0)
   speech.update('请眨眨眼', 2)
   speech.close()
   speech.update('请缓慢点头', 3)
@@ -158,6 +166,32 @@ test('Harmony bounds finishing audio and stops it when another camera opens', as
   }
 })
 
+test('a new Harmony speech session releases the previous finishing engine', async () => {
+  const service = fakeSpeech()
+  service.ready()
+  await setImmediate()
+  service.speech.update('请正对屏幕', 0)
+  service.start('voice1')
+  service.speech.finishCurrentPrompt()
+  const next = new service.Speech()
+  assert.equal(service.timers.size, 0)
+  assert.deepEqual(service.events.slice(2), ['stop', 'shutdown', 'init'])
+  next.close()
+  await setImmediate()
+})
+
+test('Harmony retries the same prompt after a queue failure without recreating the engine', async () => {
+  const service = fakeSpeech()
+  service.ready()
+  await setImmediate()
+  service.failNextSpeak()
+  service.speech.update('请正对屏幕', 0)
+  assert.equal(service.warnings.length, 1)
+  service.speech.update('请正对屏幕', 0)
+  assert.deepEqual(service.events, ['init', 'stop', ['请正对屏幕', 'voice2', 1]])
+  service.speech.close()
+})
+
 test('Harmony speech tolerates an unavailable offline voice', async () => {
   const unsupported = fakeSpeech(false)
   unsupported.speech.update('请正对屏幕', 0)
@@ -168,4 +202,13 @@ test('Harmony speech tolerates an unavailable offline voice', async () => {
   await setImmediate()
   failed.speech.update('请正对屏幕', 0)
   assert.deepEqual(failed.events, ['init'])
+})
+
+test('Harmony ignores an initialization failure arriving after the session closes', async () => {
+  const service = fakeSpeech()
+  service.speech.close()
+  service.reject(new Error('Late initialization failure'))
+  await setImmediate()
+  assert.equal(service.warnings.length, 0)
+  assert.deepEqual(service.events, ['init'])
 })

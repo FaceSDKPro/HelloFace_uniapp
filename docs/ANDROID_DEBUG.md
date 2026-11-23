@@ -10,7 +10,7 @@
 4. 运行成功后，在底部运行控制台点击红色虫子图标，选择“调试”；如需调试 App 初始化，开启后再点击旁边的“重启应用”。双击代码行号添加断点，然后在手机点击录入/验证按钮触发。
 5. 按调用链设置断点：`pages/index/index.vue` 的 `enroll` / `verify` → `utssdk/app-android/index.uts` 的参数创建与原生调用 → `HelloFaceVerifyNative.kt` 的 `invoke` → `HelloFaceVerifyCameraActivity.kt` 的进度、采集、保存回调 → `shared.uts` 的结果分发。调试 Kotlin 时按 HBuilderX 提示安装 `kotlin-language` 插件。SDK AAR 内部源码未随本工程提供，可在调用前后检查参数、结果和日志。
 
-HBuilderX 的“设置 → 运行配置”应配置 Android SDK、Gradle 和 Gradle JDK。本机已验证的组合是 JDK 17、Gradle 8.14.3、Android SDK `/Users/zlb/Library/Android/sdk`；不要使用不存在的旧 SDK 路径。环境配置见 [官方 Android UTS 运行说明](https://uniapp.dcloud.net.cn/tutorial/run/uts-development-android.html)，断点操作见 [官方 UTS/Kotlin 调试说明](https://uniapp.dcloud.net.cn/tutorial/debug/uni-uts-debug.html)。
+HBuilderX 的“设置 → 运行配置”应配置 JDK 17、Gradle 8 和有效的 Android SDK。macOS 默认 SDK 路径为 `~/Library/Android/sdk`；自定义路径可通过 `ANDROID_HOME` 或 `ANDROID_SDK_ROOT` 指定。环境配置见 [官方 Android UTS 运行说明](https://uniapp.dcloud.net.cn/tutorial/run/uts-development-android.html)，断点操作见 [官方 UTS/Kotlin 调试说明](https://uniapp.dcloud.net.cn/tutorial/debug/uni-uts-debug.html)。
 
 页面改动可保存后刷新。已有包含 SDK/依赖的基座后，修改插件 `.uts` 或混编 `.kt` 可由 HBuilderX 本地联编、重新运行，不需要云打包；不要用只同步页面的 `android:dev` 来更新原生代码。本工程命令行入口（包括 `android:run -- --hbuilder`）会先校验完整源码指纹，开发中需要绕过这一保守检查时，应直接从 HBuilderX 运行菜单启动，而不是跳过 SDK/依赖校验。官方说明见 [UTS 原生混编](https://uniapp.dcloud.net.cn/plugin/uts-plugin-hybrid.html)。
 
@@ -31,6 +31,12 @@ npm run android:uts-check -- --uni-app-x       # uni-app x 的 UTS 桥接 + Kotl
 
 需要 Android SDK、兼容的 JDK（本工程使用 17）与 Gradle 8。脚本优先使用环境变量，再查找常用 SDK 路径、本机 JDK 和 Gradle wrapper 缓存。非默认安装位置可设置 `HBUILDERX_PATH`、`ANDROID_HOME`、`GRADLE_JAVA_HOME`、`GRADLE_HOME`、`USER_DATA_PATH`（HBuilderX 用户数据目录）。首次解析第三方依赖时可能需要 Maven 网络访问。产物仅写入 `unpackage` 和工具链缓存。
 
+## 原生语音提示
+
+验证和独立活体使用设备已安装的离线中文音色。音色选择与 [SDK Demo](https://github.com/FaceSDKPro/HelloFace/blob/bb0166582dd8c2bb1fd21ecd47be75a2fab3b00b/platforms/Android/demo/src/main/java/com/hiface/sdk/demo/ui/DemoPromptSpeech.java) 对齐，兼容 `zh/CN` 和三星的 `zho/CHN` 编码；优先选择匹配地区，其次选择通用中文音色，排除在线或未安装音色。
+
+空提示不播报，相同提示按动作步骤去重。初始化完成后仅播报最新提示；排队失败可在后续进度中重试。TTS 失败只记录语音状态，不影响相机或识别回调。修改此原生逻辑后需重新构建基座，单独同步页面不会更新语音实现。
+
 ## 常用命令
 
 ```sh
@@ -43,7 +49,7 @@ npm run android:logs                     # 当前进程的插件操作日志
 npm run android:logs -- --follow         # 持续跟踪，App 重启后自动跟随
 ```
 
-只有一台已授权在线设备时自动使用它，离线设备不参与选择。多台在线设备时必须传入 `--device 序列号`。`android:dev` 在启动时固定设备，断线后等待同一序列号重连。
+只有一台已授权在线设备时自动使用它，离线设备不参与选择。多台在线设备时，先执行 `android:devices` 查询序列号，再逐台执行 `npm run android:run -- --device 序列号`。HBuilderX 编译通道按顺序使用。`android:dev` 在启动时固定设备，断线后等待同一序列号重连。
 
 `android:run` 比较手机安装包与本地基座的 SHA-256；相同则跳过安装。`--skip-install` 会严格要求二者相同，无法用正式包或另一版基座冒充当前调试包。签名不一致时提示使用原证书重建，不会卸载应用或清除本机人脸基准。
 
@@ -77,21 +83,19 @@ npm run android:base
 
 Android 图标配置和实际 PNG 内容也参与宿主指纹；更换图标后需重制基座。`android:dev` 会监听示例的 Android 图标资源、插件 Android 目录与全部共享 `*.uts`（含 `status.uts`），发现原生变更仍要求重新编译；不会将新图标或原生代码当成可热更新的页面资源。
 
-## 旧厂商系统的调试命令
+## 旧系统与调试缓存
 
-GRA-UL00 / API 23 实测没有 `sha256sum` 和 `getconf`，且旧 ADB shell 可能在报错时仍返回 0。脚本只接受 64 位十六进制摘要；命令缺失时读取已安装 APK 字节核对，不会因错误文本而要求重复安装。内存页大小在 getconf 不可用时从 `/proc/self/smaps` 的 KernelPageSize 读取，均不可读时显示未知，不猜测为 4KB。
+部分旧系统缺少 `sha256sum` 和 `getconf`，ADB shell 也可能在报错时仍返回 0。脚本仅接受有效摘要；命令缺失时读取已安装 APK 字节核对，内存页大小改从 `/proc/self/smaps` 读取，无法读取时显示未知。
 
-该设备的 `run-as` 返回 `Could not set capabilities: Operation not permitted`，应用内 ZIP 同步通道不能使用。已安装并校验当前基座后，使用 HBuilderX 的已安装基座通道：
+如果 `run-as` 返回 `Could not set capabilities: Operation not permitted`，先安装当前基座，再使用 HBuilderX 的已安装基座通道：
 
 ```sh
 npm run android:run -- --hbuilder --skip-install --device 设备序列号
 ```
 
-它在核对相同 APK 后同步页面资源；本轮已在该 API 23 手机上编译、同步及启动成功。该设备实际为 4KB 页；16KB 静态检查通过不等于已经在真实 16KB 系统运行。
+旧版 `am` 的广播参数和 `pidof` 的兼容差异由脚本处理；多结果会按完整进程名核对，日志只跟随目标 App。
 
-该系统的 `am` 不支持 `--receiver-foreground`，脚本改用等价的 `-f 0x10000000`。其 `pidof 包名` 还可能忽略包名、输出所有 PID；多结果现在通过 ps 的完整进程名核对，兼容不支持 `ps -A` 或仅返回表头的旧实现，避免日志混入其他进程。
-
-2026-11-12 更新时，HBuilderX CLI 未下发新页面，旧 www 中的 UTS classes.dex 又覆盖了新基座。先确认新旧证书一致及手机 APK 与新产物一致，再由相同证书、独立包名且无 Activity 的 instrumentation 将纯页面 ZIP 放入目标 App 调试收件目录，使用已有 DEBUG_SYNC 完成替换。该路径只更新页面，原 www 留在 debug-backup；重启后必须重新核对运行中的指纹，不能仅检查 APK。本次从旧热更新指纹恢复为当前基座指纹，19 个页面文件已同步，原基准摘要不变。没有卸载、清数据或安装同包名预览宿主；常规开发仍优先使用 HBuilderX 正常运行通道。
+更新 APK 后仍提示原生指纹不同，需检查旧页面目录中的 UTS `classes.dex` 是否覆盖了新基座。先核对 APK、签名和实际运行指纹，再备份处理过期的页面编译缓存并重新同步。保留用户基准和原页面备份，避免通过卸载或清数据处理缓存问题。
 
 ## 资源同步如何实现
 

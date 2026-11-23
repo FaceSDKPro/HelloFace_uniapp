@@ -1,27 +1,42 @@
 #!/usr/bin/env python3
-"""Copy the shared plugin and app icon assets into the uvue example."""
+"""Refresh the generated uvue dependencies from the canonical plugin and assets."""
 from pathlib import Path
 import json
 import shutil
 from generate_demo_reference import generate
 from install_sdk import retire_obsolete
 
-root = Path(__file__).resolve().parents[1]
-generate(root)
-example = root / 'demo-uni-app-x'
-plugin_id = 'HelloFace-Verify'
-destination = example / 'uni_modules' / plugin_id
-# This example directory is generated; remove the former ID to avoid duplicate modules.
-legacy = destination.parent / 'HelloFaceVerify'
-if legacy.is_dir():
-    shutil.rmtree(legacy)
-shutil.copytree(root / 'uni_modules' / plugin_id, destination, dirs_exist_ok=True)
-# 增量复制不会删除旧 AAR/HAR；按锁定清单移出，避免升级后同时联编两个 SDK。
-retire_obsolete(json.loads((root / 'sdk-artifacts.json').read_text())['artifacts'], example)
-# 这些目录完全由规范资源生成，替换副本以清掉已删除文件；签名配置由宿主单独维护。
-for relative in ('app-icons', 'demo', 'static', 'harmony-configs/entry', 'harmony-configs/AppScope'):
-    target = example / relative
+ROOT = Path(__file__).resolve().parents[1]
+SHARED_DIRECTORIES = ('uni_modules/HelloFace-Verify', 'app-icons', 'demo', 'static',
+                      'harmony-configs/entry', 'harmony-configs/AppScope')
+
+
+def prepare(root=ROOT):
+    root = Path(root)
+    example = root / 'demo-uni-app-x'
+    # 先核对输入；缺少源码或演示基准校验失败时保留现有副本。
+    for relative in SHARED_DIRECTORIES:
+        if not (root / relative).is_dir():
+            raise FileNotFoundError('Missing shared directory: ' + relative)
+    artifacts = json.loads((root / 'sdk-artifacts.json').read_text())['artifacts']
+    generate(root)
+    # 刷新前保存副本中的旧 SDK；刷新后再排除规范目录可能带入的过期库。
+    retire_obsolete(artifacts, example)
+    legacy = example / 'uni_modules/HelloFaceVerify'
+    if legacy.is_dir():
+        shutil.rmtree(legacy)
+    for relative in SHARED_DIRECTORIES:
+        replace_directory(root / relative, example / relative)
+    retire_obsolete(artifacts, example)
+    print('Prepared ' + str(example))
+
+
+def replace_directory(source, target):
+    # 只刷新列出的生成目录，宿主入口、manifest 和本地签名配置独立维护。
     if target.is_dir():
         shutil.rmtree(target)
-    shutil.copytree(root / relative, target)
-print('Prepared ' + str(example))
+    shutil.copytree(source, target)
+
+
+if __name__ == '__main__':
+    prepare()

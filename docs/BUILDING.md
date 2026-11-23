@@ -1,6 +1,6 @@
 # HelloFaceVerify 三端打包指南
 
-本文面向本仓库的源码版 UTS 插件和示例，核对日期为 2026-11-22。当前工程包括 uni-app Vue2/Vue3 示例、uni-app x uvue 示例及三端插件源码。
+本文面向本仓库的源码版 UTS 插件、根目录 Vue2/Vue3 Demo 和 `demo-uni-app-x` 中的独立 uvue Demo。
 
 ## 是否必须用云服务器打包
 
@@ -33,7 +33,7 @@ npm ci --ignore-scripts
 npm run dev:prepare
 ```
 
-`dev:prepare` 会按 [SDK 锁定清单](../sdk-artifacts.json) 补齐和校验原生 SDK，生成三端 UI 配置，并同步 uni-app x 示例。源码修改后可直接运行 `npm run dev:check`，一次完成准备和仓库检查。
+`dev:prepare` 会按 [SDK 锁定清单](../sdk-artifacts.json) 补齐和校验原生 SDK，生成三端 UI 配置，并刷新 uni-app x 示例的插件和资源副本。只在根目录维护共享源码；同步时会删除副本中的过期文件，保留独立示例的入口、manifest 和本地签名配置。源码修改后可直接运行 `npm run dev:check`，一次完成准备和仓库检查。
 
 只调试一端时，可用 `npm run sdk:install -- --platform android` 单独补齐依赖，把 `android` 替换为 `ios` 或 `harmony` 即可。`npm run ui:build` 单独生成 UI 配置，`npm run demo:prepare` 单独同步示例。
 
@@ -133,7 +133,7 @@ python3 scripts/check_android_alignment.py /本机路径/release.apk --report un
 
 ### 云端路径
 
-在 HBuilderX 中配置 AppID、Bundle ID 和签名，选择 iOS 云打包或制作自定义基座。需要确认所选云环境能编译当前 SDK；当前验证记录未包含成功的云端 IPA 构建。
+在 HBuilderX 中配置 AppID、Bundle ID 和签名，选择 iOS 云打包或制作自定义基座。所选云环境的 Xcode/Swift 工具链需兼容当前 SDK。
 
 ### 本地路径
 
@@ -142,7 +142,7 @@ python3 scripts/check_android_alignment.py /本机路径/release.apk --report un
 3. 集成插件 Swift 源码、UTS 编译产物及 `HiFace.xcframework`、`HiFaceNative.xcframework`；保留 SDK 模型资源和隐私清单，按照依赖库类型完成链接/嵌入配置。
 4. 合并插件 `Info.plist` 的相机用途描述，最低部署版本设为 iOS 15，并配置自己的签名、Archive / Export 生成 IPA。
 
-本机当前为 Xcode 15.2。`npm run ios:check` 可执行 Swift 语法、真实 UIKit 视图类型及纯状态检查，并通过仅供编译的 SDK 边界检查平台接入类型；不能据此声称真实 SDK 已编译。选择兼容 Xcode 后执行 `npm run ios:check -- --full`，再完成完整 App 链接、签名和真机验证。功能对照、断点和验收清单见 [iOS 功能与调试](IOS_DEBUG.md)。[iOS UTS 原生工程配置](https://doc.dcloud.net.cn/uni-app-x/native/use/iosuts.html)
+`npm run ios:check` 可执行 Swift 语法、真实 UIKit 视图类型及纯状态检查，并通过仅供编译的 SDK 边界检查平台接入类型。选择兼容 Xcode 后执行 `npm run ios:check -- --full` 检查真实 SDK，再完成完整 App 链接、签名和真机验证。断点和操作步骤见 [iOS 调试](IOS_DEBUG.md)。[iOS UTS 原生工程配置](https://doc.dcloud.net.cn/uni-app-x/native/use/iosuts.html)
 
 ## HarmonyOS 鸿蒙
 
@@ -153,7 +153,7 @@ HBuilderX 官方鸿蒙流程在本机调用 DevEco 工具链完成构建，不�
 3. 确认插件 `utssdk/app-harmony/libs/hiface-0.8.15.har` 已安装，`config.json` 能解析该依赖；相机权限及原因字符串由插件 `module.json5` 和 `resources` 提供。
 4. 在 HBuilderX 中选择鸿蒙真机运行；正式打包使用“发行 → App-Harmony-本地打包 → 生成安装包”，完成本地编译和签名。
 
-本机匹配的调试签名配置在被 Git 忽略的 `harmony-configs/build-profile.json5`，其他电脑需配置自己的身份及匹配 Profile。两套示例的最低鸿蒙版本均固定为 `6.0.0(20)`，以满足真实 HAR 的 API 20 要求。完整 App 和真人用例需在目标设备上验收。
+调试签名配置保存在各自工程的 `harmony-configs/build-profile.json5`，由应用所有者配置，已在 Git 和示例打包规则中排除。两套示例的最低鸿蒙版本均固定为 `6.0.0(20)`，以满足真实 HAR 的 API 20 要求。完整 App 和真人用例需在目标设备上验收。
 
 本工程的设备连接、签名匹配、CLI 运行、断点、日志和修改后重建步骤见 [鸿蒙真机运行与调试](HARMONY_DEBUG.md)。
 

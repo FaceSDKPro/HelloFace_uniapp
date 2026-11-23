@@ -15,10 +15,15 @@ final class HelloFaceVerifySpeech: NSObject, AVSpeechSynthesizerDelegate {
     private var utterance: AVSpeechUtterance?
     private var started = false
 
+    override init() {
+        super.init()
+        Self.stopFinishingPrompt()
+    }
+
     static func stopFinishingPrompt() { finishingPrompt?.close() }
 
     func update(_ text: String?, actionStep: Int) {
-        guard Self.finishingPrompt !== self, let text,
+        guard Self.finishingPrompt !== self, let text, !text.isEmpty,
               prompt?.text != text || prompt?.actionStep != actionStep else { return }
         prompt = (text, actionStep)
         speakLatest()

@@ -142,7 +142,7 @@ detectLiveness({
 | iOS | iOS 15+；本地构建需兼容 Swift 6.1.2 的 Xcode（16.3+） |
 | HarmonyOS | API 20+，ARM64，DevEco Studio 26 |
 
-人脸采集需真机摄像头，Web、小程序不支持。当前插件 0.2.3，底层 SDK 0.8.15。
+人脸采集需真机摄像头，Web、小程序不支持。当前插件 0.4.0，底层 SDK 0.8.15。
 
 ## 常见问题
 
@@ -165,3 +165,5 @@ detectLiveness({
 - 🌍 **网站说明**：[HelloFace SDK](https://helloface.dev/)
 - 📧 **EMAIL**：[FaceAISDK.Service@gmail.com](mailto:FaceAISDK.Service@gmail.com)
 - 📱 **APK 下载**：[下载体验 APK](https://www.pgyer.com/HelloFace)
+
+Powered by HelloFace

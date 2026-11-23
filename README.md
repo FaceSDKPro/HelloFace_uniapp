@@ -10,6 +10,8 @@
 
 ## 运行示例
 
+根目录是 uni-app Vue2/Vue3 Demo，`demo-uni-app-x` 是独立 uvue Demo。插件源码统一维护在根目录 `uni_modules/HelloFace-Verify`；`npm run demo:prepare` 会刷新 uvue 的插件和资源副本，并清理副本中过期的文件。
+
 1. 从插件市场导入完整插件和示例，确认 `uni_modules/HelloFace-Verify` 含目标平台 SDK；源码中缺失的 SDK 可按 [开发维护](#开发维护)说明补齐。
 2. 用 HBuilderX 导入根目录，配置自己的 AppID、包名和签名，按 [打包指南](docs/BUILDING.md)运行到真机。默认 Vue3；Vue2 将 `manifest.json` 的 `vueVersion` 改为 `"2"`。
 3. 从源码运行 uni-app x 示例时，先执行 `npm run dev:prepare`，再用 HBuilderX 导入 `demo-uni-app-x` 并配置自己的 AppID、包名和签名。手动准备方式见 [打包指南](docs/BUILDING.md#通用准备)。
@@ -41,6 +43,8 @@ Web、小程序不支持此插件。
 
 验证是否通过以 `success` 回调里的 `passed === true` 为准。未通过也可能进入 `success`，调用错误走 `fail`；`complete` 用于恢复按钮等收尾。需要显示结束帧时，把非空的 `frameJpegBase64` 加上 `data:image/jpeg;base64,` 前缀传给 `image`，用 `mode="aspectFit"` 显示整帧。请避免记录包含帧或特征的完整回调。
 
+结果区展示 `code/msg`、非空的 `faceID`、`passed/outcome`、相似度、活体分数和结果图片；调用失败时补充 `errCode/sdkCode`。
+
 同步按钮使用内置 [AI 演示基准](demo/README.md)；同一 `faceID` 已有基准时，确认后才会替换。试验 1:1 本人验证时，请先录入本人。页面的开关、确认弹窗和结果卡片是演示交互，业务接入可从 [最小调用](docs/API.md#最小调用) 开始。各接口参数和错误码见 [API 参考](docs/API.md)。
 
 ## 开发维护
@@ -59,7 +63,3 @@ npm run dev:check    # 提交前执行，包含准备、自动测试和三端 UT
 - 🌍 **网站说明**：[HelloFace SDK](https://helloface.dev/)
 - 📧 **EMAIL**：[FaceAISDK.Service@gmail.com](mailto:FaceAISDK.Service@gmail.com)
 - 📱 **APK 下载**：[下载体验 APK](https://www.pgyer.com/HelloFace)
-
-## 许可
-
-The wrapper and example code are provided for technical exchange and evaluation purposes only. See [LICENSE](LICENSE). The native SDK, models, and resources remain subject to the upstream `Hello Face Test Only` terms. Upstream currently states that its models are not intended for children under 12 or financial use.
